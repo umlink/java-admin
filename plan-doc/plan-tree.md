@@ -1,1183 +1,680 @@
-可以。下面我给你一版 第 1 天到第 3 天的超详细执行说明，目标不是“看懂”，而是让你能边看边做。
-
-这版会重点讲清：
-•	这 3 天每天到底学什么
-•	每一步为什么这么做
-•	新建的 Java 类放哪个目录
-•	每个目录的职责
-•	先写哪些文件，后写哪些文件
-•	每天结束时要达到什么状态
-•	容易踩的坑是什么
-
-我按你现在的项目背景来写：
-•	Mac 开发
-•	IntelliJ IDEA
-•	Spring Boot 3.x
-•	Maven
-•	JDK 17
-•	application.yml
-•	先做单体后端接口项目
-•	前端先不做，只调接口
-
-⸻
-
-一、先明确这 3 天的总目标
-
-这 3 天不是在“学很多知识点”，而是在完成一个很明确的阶段目标：
-
-把 Spring Boot 项目从 0 搭到“用户模块 CRUD 可用”的状态。
-
-3 天结束后，你应该已经有：
-•	一个能启动的 Spring Boot 项目
-•	MySQL 和 Redis 连接正常
-•	统一返回结构
-•	基础异常处理
-•	sys_user 表
-•	用户新增、修改、删除、详情接口
-•	基础参数校验
-•	README 初版
-•	Git 提交记录
-
-你这三天的学习本质上是：
-
-环境 → 工程骨架 → 数据库 → 公共层 → 第一个业务模块
-
-⸻
-
-二、先把项目目录理解清楚
-
-在写代码之前，你先要知道目录怎么组织。你后面所有类基本都放在这些目录里。
-
-假设你的包名是：
-
-com.example.admin
-
-那么目录大概是这样：
-
-src/main/java/com/example/admin
-├── AdminApplication.java
-├── controller
-├── service
-├── service/impl
-├── mapper
-├── entity
-├── dto
-├── vo
-├── config
-├── common
-│   ├── api
-│   ├── enums
-│   └── constant
-├── exception
-└── utils
-
-资源目录：
-
-src/main/resources
-├── application.yml
-└── sql
-└── init.sql
-
-测试目录：
-
-src/test/java/com/example/admin
-
-
-⸻
-
-三、每个目录是干什么的
-
-这个你必须尽快形成肌肉记忆。
-
-1. AdminApplication.java
-
-位置：
-
-src/main/java/com/example/admin/AdminApplication.java
-
-作用：
-•	Spring Boot 启动类
-•	项目入口
-•	相当于应用主程序
-
-⸻
-
-2. controller
-
-位置：
-
-src/main/java/com/example/admin/controller
-
-作用：
-•	接收 HTTP 请求
-•	调用 service
-•	返回统一响应
-
-你可以理解为“接口层”。
-
-例子：
-•	UserController.java
-•	AuthController.java
-
-⸻
-
-3. service
-
-位置：
-
-src/main/java/com/example/admin/service
-
-作用：
-•	定义业务接口
-•	描述系统要做什么
-
-例子：
-•	UserService.java
-
-⸻
-
-4. service/impl
-
-位置：
-
-src/main/java/com/example/admin/service/impl
-
-作用：
-•	业务接口的实现类
-•	具体业务逻辑都放这里
-
-例子：
-•	UserServiceImpl.java
-
-⸻
-
-5. mapper
-
-位置：
-
-src/main/java/com/example/admin/mapper
-
-作用：
-•	操作数据库
-•	和 MyBatis-Plus 交互
-•	一般继承 BaseMapper<T>
-
-例子：
-•	SysUserMapper.java
-
-⸻
-
-6. entity
-
-位置：
-
-src/main/java/com/example/admin/entity
-
-作用：
-•	对应数据库表的实体类
-•	通常一张表一个 entity
-
-例子：
-•	SysUser.java
-•	SysRole.java
-
-⸻
-
-7. dto
-
-位置：
-
-src/main/java/com/example/admin/dto
-
-作用：
-•	接收前端请求参数
-•	给接口入参用
-
-例子：
-•	UserCreateDTO.java
-•	UserUpdateDTO.java
-•	LoginDTO.java
-
-⸻
-
-8. vo
-
-位置：
-
-src/main/java/com/example/admin/vo
-
-作用：
-•	返回给前端的数据结构
-•	不直接返回 entity
-
-例子：
-•	UserVO.java
-•	LoginVO.java
-
-⸻
-
-9. config
-
-位置：
-
-src/main/java/com/example/admin/config
-
-作用：
-•	Spring 配置类
-•	插件配置、拦截器配置、MyBatis-Plus 配置等
-
-例子：
-•	MybatisPlusConfig.java
-
-⸻
-
-10. common/api
-
-位置：
-
-src/main/java/com/example/admin/common/api
-
-作用：
-•	放统一响应结构
-•	放通用返回码
-
-例子：
-•	Result.java
-•	ResultCode.java
-
-⸻
-
-11. exception
-
-位置：
-
-src/main/java/com/example/admin/exception
-
-作用：
-•	自定义异常
-•	全局异常处理
-
-例子：
-•	BusinessException.java
-•	GlobalExceptionHandler.java
-
-⸻
-
-12. utils
-
-位置：
-
-src/main/java/com/example/admin/utils
-
-作用：
-•	工具类
-•	比如密码加密、Bean 拷贝等
-
-例子：
-•	PasswordUtil.java
-
-⸻
-
-四、第 1 天详细说明
-
-第 1 天你要做的，不是写业务，而是搭好开发底座。
-
-第 1 天目标
-
-完成这些事：
-•	环境可用
-•	Spring Boot 项目能启动
-•	application.yml 存在
-•	目录结构建好
-•	健康检查接口能访问
-•	Git 初始化完成
-
-⸻
-
-第 1 天步骤 1：确认开发环境
-
-你先确认这些工具全部可用：
-•	JDK 17
-•	IntelliJ IDEA
-•	Maven
-•	Git
-•	Docker Desktop
-•	MySQL
-•	Redis
-•	Apifox 或 Postman
-
-终端里检查：
-
-java -version
-mvn -version
-git --version
-docker --version
-
-如果这里有问题，不要继续写代码，先把环境补齐。
-
-⸻
-
-第 1 天步骤 2：创建项目
-
-你应该使用：
-•	Spring Boot 3.5.x
-•	Java
-•	Maven
-•	Jar
-•	YAML
-
-项目信息建议：
-•	Group：com.example
-•	Artifact：java-admin-system
-•	Name：java-admin-system
-•	Package name：com.example.admin
-
-依赖先选：
-•	Spring Web
-•	Validation
-•	MySQL Driver
-•	Spring Data Redis
-•	Lombok
-•	Spring Configuration Processor
-
-创建后你会得到：
-•	pom.xml
-•	src/main/java
-•	src/main/resources
-•	src/test/java
-
-⸻
-
-第 1 天步骤 3：确认主启动类
-
-你要检查有没有启动类。
-
-应该在：
-
-src/main/java/com/example/admin/AdminApplication.java
-
-内容类似：
-
-package com.example.admin;
-
-import org.springframework.boot.SpringApplication;
-import org.springframework.boot.autoconfigure.SpringBootApplication;
-
-@SpringBootApplication
-public class AdminApplication {
-public static void main(String[] args) {
-SpringApplication.run(AdminApplication.class, args);
-}
-}
-
-如果没有，就自己新建。
-
-⸻
-
-第 1 天步骤 4：新建 application.yml
-
-位置：
-
-src/main/resources/application.yml
-
-先写最小可用版：
-
-server:
-port: 8080
-
-spring:
-application:
-name: java-admin-system
-
-后面再逐步补 datasource、redis 等配置。
-
-⸻
-
-第 1 天步骤 5：手动创建项目包结构
-
-在：
-
-src/main/java/com/example/admin
-
-右键新建 package，依次创建：
-•	controller
-•	service
-•	service.impl
-•	mapper
-•	entity
-•	dto
-•	vo
-•	config
-•	common.api
-•	exception
-•	utils
-
-注意：
-•	service.impl 是一个 package，不是文件夹随便建
-•	common.api 也是 package
-
-⸻
-
-第 1 天步骤 6：写一个健康检查接口
-
-先不要写用户模块。先确认 Web 层没问题。
-
-新建类：
-
-src/main/java/com/example/admin/controller/HealthController.java
-
-代码：
-
-package com.example.admin.controller;
-
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
-@RestController
-@RequestMapping("/api/health")
-public class HealthController {
-
-    @GetMapping("/ping")
-    public String ping() {
-        return "pong";
-    }
-}
-
-然后启动项目，访问：
-
-http://localhost:8080/api/health/ping
-
-如果返回 pong，说明：
-•	项目启动正常
-•	Web 层正常
-•	路由正常
-
-⸻
-
-第 1 天步骤 7：初始化 Git
-
-在项目根目录执行：
-
-git init
-git add .
-git commit -m "feat: initialize project skeleton"
-
-以后你每天都要提交一次。
-
-⸻
-
-第 1 天步骤 8：写 README 初版
-
-项目根目录新建：
-
-README.md
-
-至少写这些：
-
-# java-admin-system
-
-Java 后端转岗练习项目，目标是实现一个权限管理后台系统接口版。
-
-## 技术栈
+# Java 后端 / Java 全栈转岗学习总计划大纲
+
+## 一、目标定位
+
+### 1. 当前背景
+- 软件工程专业
+- 10 年前端开发经验
+- 熟悉 Node.js、React、Vue、CSS 等技术栈
+- 对 Java 基础、缓存、数据库设计已有初步学习
+- 可借助 AI 快速补知识、排错、Review 代码
+- 当前目标以 **Java 后端主栈能力建设** 为核心，前端暂不投入
+
+### 2. 转型目标
+在较短周期内完成从“前端主栈工程师”向“Java 后端 / Java 全栈工程师”的切换，达到以下结果：
+
+- 能独立完成标准 Java 后端项目
+- 能从工程角度解释设计方案
+- 能应对 Java 后端 / Java 全栈岗位面试
+- 能形成项目、简历、讲稿、笔记等完整求职输出
+
+---
+
+## 二、整体学习策略
+
+## 1. 核心原则
+- 以项目驱动学习，不走纯理论路线
+- 以后端接口能力为主，不做前端展示层
+- 采用高强度压缩式学习节奏
+- 学到一个点，立即落到项目里
+- 学完就输出成笔记、项目讲稿、面试表达
+
+## 2. 学习方法
+- **项目主线优先**
+- **知识按需补强**
+- **AI 辅助提效，但不替代思考**
+- **每天有代码产出，每周有阶段输出**
+
+## 3. 时间分配建议
+- 60%：项目开发与接口实现
+- 25%：后端核心知识补强
+- 15%：面试整理、笔记输出、复盘总结
+
+---
+
+## 三、总学习框架
+
+学习框架分为 4 层：
+
+### 第一层：核心主干层
+- Java 语言工作化能力
+- Spring Boot 企业开发主线
+- MySQL 与持久化能力
+- Redis 与缓存能力
+- 登录鉴权与权限系统能力
+
+### 第二层：进阶增强层
+- JVM 基础
+- 并发编程基础
+- RabbitMQ / MQ 场景化能力
+- Linux / Nginx / Docker 基础
+- 微服务基础认知
+
+### 第三层：项目落地层
+- 项目 A：权限管理后台
+- 项目 B：订单系统
+- 项目 C：微服务 Demo
+
+### 第四层：求职输出层
+- 项目讲稿
+- 笔记体系
+- 面试题体系
+- 简历与项目包装
+
+---
+
+## 四、能力建设模块
+
+## 模块 1：Java 语言基础补强
+### 目标
+达到企业开发可用水平，不在语言层卡住
+
+### 内容
+- 面向对象
+- 集合框架
+- 泛型
+- 异常体系
+- 枚举
+- 注解
+- Lambda / Stream
+- Optional
+- 常见设计模式：策略、模板、工厂、单例
+
+### 输出要求
+- 能看懂大多数业务代码
+- 能编写 DTO / VO / Entity / Service
+- 能独立完成基本模块代码
+
+---
+
+## 模块 2：Spring Boot 企业开发主线
+### 目标
+掌握 Java Web 核心开发能力
+
+### 内容
+- Spring Boot 项目结构
+- IOC / DI
+- AOP 基础
+- Spring MVC
+- 参数绑定
+- 参数校验
+- 全局异常处理
+- 统一返回结构
+- 配置管理
+- 日志管理
+- RESTful API 设计
+- 分层设计：controller / service / mapper / entity / dto / vo
+
+### 输出要求
+- 能快速搭建项目脚手架
+- 能完成标准后台接口开发
+- 能讲清楚项目分层和请求链路
+
+---
+
+## 模块 3：数据库与持久化
+### 目标
+具备后端工程师的数据建模和 SQL 能力
+
+### 内容
+- MySQL 基础
+- 表设计
+- 一对多 / 多对多建模
+- MyBatis / MyBatis-Plus
+- 索引设计
+- 事务
+- 锁
+- explain
+- SQL 优化
+- 慢查询分析
+- 审计字段、状态字段、逻辑删除设计
+
+### 输出要求
+- 能独立设计项目表结构
+- 能写基本查询、分页、条件筛选
+- 能解释索引和事务相关问题
+
+---
+
+## 模块 4：缓存与中间件
+### 目标
+具备业务性能设计能力
+
+### 内容
+- Redis 基础数据结构
+- 缓存过期策略
+- 缓存穿透 / 击穿 / 雪崩
+- 登录态缓存
+- 验证码缓存
+- 权限缓存
+- 分布式锁基础
+- MQ 基础：RabbitMQ
+- 异步解耦
+- 延迟任务思路
+- 幂等设计
+
+### 输出要求
+- 能在项目中合理使用 Redis
+- 能说明引入 MQ 的必要性
+- 能描述缓存和异步的应用场景
+
+---
+
+## 模块 5：安全、权限与系统能力
+### 目标
+具备标准企业后台系统设计能力
+
+### 内容
+- Session / Cookie / Token
+- JWT 基础
+- Sa-Token
+- RBAC 权限模型
+- 用户、角色、菜单、权限关系
+- 文件上传
+- 统一异常
+- 统一响应
+- 操作日志基础
+- 防重复提交
+- 幂等基础
+
+### 输出要求
+- 能实现基础登录鉴权
+- 能实现 RBAC 基础模型
+- 能构建标准后台接口系统
+
+---
+
+## 模块 6：JVM 与并发
+### 目标
+补齐 Java 工程师底层能力和面试高频内容
+
+### 内容
+- JVM 内存结构
+- 类加载机制
+- GC 基础
+- OOM 基础定位
+- 线程和线程池
+- synchronized
+- volatile
+- Lock
+- CAS
+- ConcurrentHashMap
+- CompletableFuture
+
+### 输出要求
+- 面试中能回答 JVM / 并发基础题
+- 能将并发知识与业务场景结合理解
+
+---
+
+## 模块 7：微服务与部署基础
+### 目标
+建立服务治理和部署交付基础认知
+
+### 内容
+- 单体与微服务区别
+- 注册中心
+- 配置中心
+- 网关
+- 服务间调用
+- 限流熔断
+- Linux 常用命令
+- Docker
+- Docker Compose
+- Nginx
+- JVM 应用部署与运行
+
+### 输出要求
+- 能跑通简单微服务 demo
+- 能解释各组件作用
+- 能完成本地部署和基础运维排查
+
+---
+
+## 五、项目规划
+
+## 项目 A：权限管理后台系统
+### 目标
+证明具备标准 Java 后端开发能力
+
+### 技术栈
 - Java 17
-- Spring Boot 3.x
-- Maven
+- Spring Boot
+- MyBatis-Plus
 - MySQL
 - Redis
-
-## 当前进度
-- [x] 项目初始化
-- [x] 健康检查接口
-- [ ] 数据库接入
-- [ ] 用户模块
-
-
-⸻
-
-第 1 天结束验收
-
-你应该已经做到：
-•	项目能启动
-•	健康检查接口可访问
-•	application.yml 已创建
-•	包结构已创建
-•	Git 已初始化
-•	README 已存在
-
-⸻
-
-五、第 2 天详细说明
-
-第 2 天核心不是写接口，而是把数据库和公共层搭起来。
-
-第 2 天目标
-
-完成：
-•	MySQL 连接
-•	Redis 连接
-•	基础表结构
-•	entity
-•	mapper
-•	Result
-•	BusinessException
-•	全局异常处理器骨架
-•	MyBatis-Plus 分页配置
-
-⸻
-
-第 2 天步骤 1：在 pom.xml 补充依赖
-
-你需要手动补这些依赖：
-•	MyBatis-Plus
-•	Sa-Token
-•	Knife4j
-•	spring-security-crypto
-
-你这一天先至少补：
-•	mybatis-plus-spring-boot3-starter
-•	knife4j-openapi3-jakarta-spring-boot-starter
-
-如果你当天只想先跑数据库，也可以先不加 Sa-Token。
-
-⸻
-
-第 2 天步骤 2：补全 application.yml
-
-把数据库和 Redis 配上。
-
-server:
-port: 8080
-
-spring:
-application:
-name: java-admin-system
-datasource:
-url: jdbc:mysql://localhost:3306/java_admin_system?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
-username: root
-password: 123456
-driver-class-name: com.mysql.cj.jdbc.Driver
-data:
-redis:
-host: localhost
-port: 6379
-database: 0
-timeout: 5000ms
-
-mybatis-plus:
-configuration:
-log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
-global-config:
-db-config:
-logic-delete-field: deleted
-logic-delete-value: 1
-logic-not-delete-value: 0
-
-如果项目启动报数据源错，就优先排查：
-•	数据库是否已创建
-•	MySQL 是否启动
-•	用户名密码是否正确
-
-⸻
-
-第 2 天步骤 3：创建数据库
-
-你要在 MySQL 里先创建数据库：
-
-CREATE DATABASE java_admin_system;
-
-然后新建 SQL 文件：
-
-位置：
-
-src/main/resources/sql/init.sql
-
-把建表 SQL 放进去。
-
-⸻
-
-第 2 天步骤 4：先建 5 张表
-
-你现在至少建这些：
-•	sys_user
-•	sys_role
-•	sys_menu
-•	sys_user_role
-•	sys_role_menu
-
-这是后面 RBAC 的基本骨架。
-
-⸻
-
-第 2 天步骤 5：创建 entity 类
-
-每张表对应一个 entity 类，放在：
-
-src/main/java/com/example/admin/entity
-
-要新建的类有：
-•	SysUser.java
-•	SysRole.java
-•	SysMenu.java
-•	SysUserRole.java
-•	SysRoleMenu.java
-
-其中 SysUser.java 最先写。
-
-你要记住规则：
-
-数据库表对应 entity。
-
-比如：
-•	表名：sys_user
-•	类名：SysUser
-
-⸻
-
-第 2 天步骤 6：创建 mapper 接口
-
-位置：
-
-src/main/java/com/example/admin/mapper
-
-新建：
-•	SysUserMapper.java
-•	SysRoleMapper.java
-•	SysMenuMapper.java
-•	SysUserRoleMapper.java
-•	SysRoleMenuMapper.java
-
-规则：
-
-entity 写完，再写 mapper。
-
-每个 mapper 一般继承：
-
-BaseMapper<实体类>
-
-
-⸻
-
-第 2 天步骤 7：创建统一返回结构
-
-位置：
-
-src/main/java/com/example/admin/common/api
-
-新建：
-•	Result.java
-•	ResultCode.java
-
-为什么第 2 天就做？
-因为你后面所有接口都要统一返回，越早定越好。
-
-⸻
-
-第 2 天步骤 8：创建异常类
-
-位置：
-
-src/main/java/com/example/admin/exception
-
-新建：
-•	BusinessException.java
-•	GlobalExceptionHandler.java
-
-注意区分：
-
-BusinessException
-
-是自定义业务异常
-比如：
-•	用户不存在
-•	用户名重复
-
-GlobalExceptionHandler
-
-是全局异常拦截器
-作用是把异常转换成统一响应
-
-⸻
-
-第 2 天步骤 9：创建 MyBatis-Plus 配置类
-
-位置：
-
-src/main/java/com/example/admin/config/MybatisPlusConfig.java
-
-这一天你先只配置分页插件就够了。
-
-为什么现在做？
-因为第 3 天你很快就会写分页查询，提前配好更顺。
-
-⸻
-
-第 2 天步骤 10：写一个数据库测试接口
-
-临时测试 mapper 是否可用。
-
-可以新建：
-
-src/main/java/com/example/admin/controller/TestController.java
-
-用来简单查一下用户表数据。
-
-这类测试接口只是临时辅助，后面可以删。
-
-⸻
-
-第 2 天结束验收
-
-你应该已经有：
-•	application.yml 能连 MySQL / Redis
-•	5 张表已建好
-•	entity 已创建
-•	mapper 已创建
-•	Result 已创建
-•	BusinessException 已创建
-•	GlobalExceptionHandler 骨架已创建
-•	Mapper 基础查询能跑通
-
-⸻
-
-六、第 3 天详细说明
-
-第 3 天是第一个真正的业务开发日。
-
-第 3 天目标
-
-完成：
-•	sys_user 对应用户模块 CRUD
-•	DTO / VO
-•	用户 service
-•	用户 controller
-•	参数校验
-•	逻辑删除
-•	密码加密
-•	用户接口联调
-
-⸻
-
-第 3 天步骤 1：先想清楚用户模块需要哪些类
-
-你今天做的是用户模块，所以你要新增的类主要在这些目录：
-
-dto
-
-放请求参数类
-•	UserCreateDTO.java
-•	UserUpdateDTO.java
-
-vo
-
-放响应类
-•	UserVO.java
-
-service
-
-放接口
-•	UserService.java
-
-service.impl
-
-放实现
-•	UserServiceImpl.java
-
-controller
-
-放接口类
-•	UserController.java
-
-utils
-
-放工具类
-•	PasswordUtil.java
-
-⸻
-
-第 3 天步骤 2：先写 DTO
-
-位置：
-
-src/main/java/com/example/admin/dto
-
-为什么先写 DTO？
-因为 controller 接口入参要先确定。
-
-你今天先写：
-•	UserCreateDTO
-•	UserUpdateDTO
-
-你要记住：
-•	创建和修改通常分两个 DTO
-•	不要用 entity 直接接前端参数
-
-⸻
-
-第 3 天步骤 3：再写 VO
-
-位置：
-
-src/main/java/com/example/admin/vo
-
-新建：
-•	UserVO.java
-
-为什么？
-因为接口返回不能直接把 entity 原样返回。
-尤其密码字段不能返回出去。
-
-所以：
-•	entity 面向数据库
-•	VO 面向接口返回
-
-⸻
-
-第 3 天步骤 4：写 UserService
-
-位置：
-
-src/main/java/com/example/admin/service/UserService.java
-
-这里先定义用户模块的业务能力，比如：
-•	新增用户
-•	修改用户
-•	删除用户
-•	查询详情
-
-这一层只定义“做什么”，不写实现细节。
-
-⸻
-
-第 3 天步骤 5：写 UserServiceImpl
-
-位置：
-
-src/main/java/com/example/admin/service/impl/UserServiceImpl.java
-
-这里是今天最重要的文件。
-
-逻辑包括：
-
-新增用户
-•	查用户名是否重复
-•	密码加密
-•	保存用户
-
-修改用户
-•	根据 id 查用户是否存在
-•	更新昵称、邮箱、手机号、状态
-
-删除用户
-•	根据 id 查用户是否存在
-•	调用逻辑删除
-
-查询详情
-•	根据 id 查用户
-•	转成 UserVO 返回
-
-⸻
-
-第 3 天步骤 6：写密码工具类
-
-位置：
-
-src/main/java/com/example/admin/utils/PasswordUtil.java
-
-为什么放 utils？
-因为它是通用工具，不属于某个具体业务层。
-
-你第 3 天就要把密码明文问题处理掉，不然后面登录模块会很乱。
-
-⸻
-
-第 3 天步骤 7：写 UserController
-
-位置：
-
-src/main/java/com/example/admin/controller/UserController.java
-
-它负责：
-•	接收请求
-•	校验参数
-•	调用 UserService
-•	返回 Result
-
-你今天至少要有这些接口：
-•	POST /api/users
-•	PUT /api/users/{id}
-•	DELETE /api/users/{id}
-•	GET /api/users/{id}
-
-⸻
-
-第 3 天步骤 8：补参数校验
-
-参数校验主要写在 DTO 上。
-
-比如：
-•	用户名不能为空
-•	密码不能为空
-•	密码长度限制
-•	状态不能为空
-
-Controller 参数上配 @Valid。
-
-为什么第 3 天就做？
-因为这是企业项目基本规范，不能后补。
-
-⸻
-
-第 3 天步骤 9：完善全局异常处理器
-
-前一天你只写了骨架。今天要补：
-•	MethodArgumentNotValidException
-•	BusinessException
-•	通用 Exception
-
-这样参数错误和业务错误都能统一返回。
-
-⸻
-
-第 3 天步骤 10：调接口
-
-今天你必须用 Apifox 或 IDEA .http 文件把用户模块跑通。
-
-至少测这些场景：
-
-正常场景
-•	新增用户成功
-•	查询详情成功
-•	修改用户成功
-•	删除用户成功
-
-错误场景
-•	用户名重复
-•	参数为空
-•	删除不存在的用户
-•	查询不存在的用户
-
-⸻
-
-第 3 天步骤 11：更新 README
-
-你要在 README 里补当前进度：
-•	已完成用户模块 CRUD
-•	已完成统一响应
-•	已完成异常处理
-•	已完成参数校验
-
-这会强迫你做阶段总结。
-
-⸻
-
-第 3 天结束验收
-
-你应该已经做到：
-•	用户 CRUD 已调通
-•	参数校验生效
-•	统一响应结构正常
-•	用户名重复会抛业务异常
-•	删除采用逻辑删除
-•	密码是加密存储
-•	README 已更新
-•	已至少提交 1 次 Git
-
-⸻
-
-七、这三天新建类时的放置规则
-
-这个部分你以后可以反复看。
-
-1. 启动类放哪里
-
-src/main/java/com/example/admin/AdminApplication.java
-
-2. 配置类放哪里
-
-src/main/java/com/example/admin/config
-
-3. Controller 放哪里
-
-src/main/java/com/example/admin/controller
-
-4. Service 接口放哪里
-
-src/main/java/com/example/admin/service
-
-5. Service 实现放哪里
-
-src/main/java/com/example/admin/service/impl
-
-6. Mapper 放哪里
-
-src/main/java/com/example/admin/mapper
-
-7. 数据表实体类放哪里
-
-src/main/java/com/example/admin/entity
-
-8. 请求参数类放哪里
-
-src/main/java/com/example/admin/dto
-
-9. 返回对象类放哪里
-
-src/main/java/com/example/admin/vo
-
-10. 通用响应类放哪里
-
-src/main/java/com/example/admin/common/api
-
-11. 异常类放哪里
-
-src/main/java/com/example/admin/exception
-
-12. 工具类放哪里
-
-src/main/java/com/example/admin/utils
-
-13. 配置文件放哪里
-
-src/main/resources/application.yml
-
-14. SQL 文件放哪里
-
-src/main/resources/sql
-
-
-⸻
-
-八、你这三天的正确开发顺序
-
-这个顺序很重要，别乱。
-
-第 1 天顺序
-•	环境
-•	创建项目
-•	启动类
-•	application.yml
-•	包结构
-•	健康检查接口
-•	Git
-•	README
-
-第 2 天顺序
-•	配数据库
-•	建库建表
-•	写 entity
-•	写 mapper
-•	写 Result
-•	写异常类
-•	写配置类
-•	数据库测试
-
-第 3 天顺序
-•	写 DTO
-•	写 VO
-•	写 service
-•	写 service impl
-•	写工具类
-•	写 controller
-•	补参数校验
-•	补异常处理
-•	测接口
-•	更新 README
-
-⸻
-
-九、这三天最容易犯的错
-
-1. 把 entity 当 DTO 用
-
-不要这样。
-entity 是数据库实体，不是前端入参对象。
-
-2. 直接返回 entity
-
-尤其用户表里有密码字段，这是不规范的。
-
-3. 把所有逻辑都写在 controller
-
-controller 只负责接请求和返回结果，业务逻辑要进 service。
-
-4. 没有统一返回结构
-
-这样后面接口会很乱。
-
-5. 没做参数校验
-
-前期偷懒，后面返工更多。
-
-6. 不写 Git 提交
-
-后面你很难回溯自己的开发过程。
-
-⸻
-
-十、你这三天每天都要做的固定动作
-
-每天结束前做这三件事：
-
-1. 提交 Git
-
-例如：
-
-git add .
-git commit -m "feat: implement user crud module"
-
-2. 写 5 行总结
-
-例如：
-•	今天完成了什么
-•	遇到什么问题
-•	怎么解决
-•	还有什么没懂
-•	明天计划做什么
-
-3. 记录 3 个面试点
-
-比如第 3 天可以记：
-•	为什么要分层
-•	为什么密码要加密存储
-•	为什么要统一返回结构
-
-⸻
-
-十一、如果你现在就继续做，下一步应该是什么
-
-在这三天之后，你下一步就进入：
-
-第 4 天
-•	角色模块 CRUD
-•	SysRole
-•	RoleCreateDTO
-•	RoleVO
-•	RoleService
-•	RoleController
-
-第 5 天
-•	用户分页查询
-•	角色分页查询
-•	条件筛选
-•	MyBatis-Plus 分页接口
-
-第 6 天
-•	菜单模块
-•	菜单树接口
-
-⸻
-
-十二、给你一个最简记忆版
-
-你可以把这三天记成这句话：
-
-第 1 天搭工程，第 2 天搭数据和公共层，第 3 天做第一个业务模块。
-
-再压缩一点就是：
-
-启动项目 → 接数据库 → 写用户 CRUD
-
-⸻
-
-如果你要，我下一条可以继续给你一版 “第 1 天到第 3 天每一步对应要创建的具体类名清单”，做成像 checklist 一样，你照着在 IDEA 里一个个建就行。
+- Sa-Token
+- Knife4j
+- Docker
+
+### 模块
+- 用户管理
+- 角色管理
+- 菜单管理
+- 权限控制
+- 登录 / 登出
+- Token 鉴权
+- 分页查询
+- 条件筛选
+- 文件上传（后续）
+- 操作日志（后续）
+
+### 重点能力
+- 分层设计
+- RBAC 模型
+- 参数校验
+- 统一异常处理
+- 统一返回结构
+- Redis 场景化应用
+
+---
+
+## 项目 B：订单系统
+### 目标
+证明具备业务型后端系统设计能力
+
+### 技术栈
+- Spring Boot
+- MyBatis-Plus
+- MySQL
+- Redis
+- RabbitMQ
+- Docker
+
+### 模块
+- 商品管理
+- 库存管理
+- 创建订单
+- 查询订单
+- 取消订单
+- 订单状态流转
+- 支付回调模拟
+- 异步通知
+- 延迟关闭订单
+
+### 重点能力
+- 事务边界
+- 幂等控制
+- Redis 缓存
+- MQ 异步流程
+- 状态流转设计
+- 并发场景基础理解
+
+---
+
+## 项目 C：微服务 Demo
+### 目标
+建立微服务基础能力和服务治理认知
+
+### 技术栈
+- Spring Cloud Alibaba
+- Nacos
+- Gateway
+- OpenFeign
+- Sentinel
+
+### 模块
+- user-service
+- product-service
+- order-service
+- gateway
+- nacos 配置和注册
+
+### 重点能力
+- 服务注册与发现
+- 配置中心
+- 网关转发
+- 服务间调用
+- 限流基础
+
+---
+
+## 六、10 周高强度学习路线
+
+## 第 1 阶段：第 1～2 周
+### 目标
+搭建单体后端骨架并完成权限后台核心基础能力
+
+### 内容
+- Java 工作化补强
+- Spring Boot 基础
+- MyBatis-Plus
+- MySQL 接入
+- Redis 接入
+- 用户 / 角色 / 菜单基础模块
+- 登录 / 登出
+- Token 鉴权
+- 统一响应结构
+- 全局异常处理
+- 参数校验
+- README / API 文档基础
+
+### 阶段产出
+- 单体权限后台第一版
+- 用户 CRUD
+- 角色 CRUD
+- 菜单 CRUD
+- 登录接口
+- 基础 RBAC 关系模型
+
+---
+
+## 第 2 阶段：第 3～4 周
+### 目标
+将单体后台做成企业基础版
+
+### 内容
+- 用户分配角色
+- 角色分配菜单
+- 当前用户权限聚合
+- 索引基础
+- 缓存设计
+- 权限缓存
+- 防重复提交
+- Docker 部署
+- 文档整理
+
+### 阶段产出
+- 可部署的单体权限后台
+- 缓存设计说明
+- 数据库设计说明
+- 项目讲稿第一版
+
+---
+
+## 第 3 阶段：第 5～6 周
+### 目标
+完成订单系统，补齐事务、缓存、MQ、幂等
+
+### 内容
+- 订单系统表设计
+- 商品、库存、订单、订单明细
+- 下单主流程
+- Spring 事务
+- Redis 业务缓存
+- RabbitMQ 异步通知
+- 支付回调模拟
+- 延迟关闭订单
+- 幂等方案
+
+### 阶段产出
+- 订单系统第一版
+- MQ 场景化应用
+- Redis 场景化应用
+- 事务边界和业务设计整理
+
+---
+
+## 第 4 阶段：第 7～8 周
+### 目标
+补 JVM、并发和微服务基础
+
+### 内容
+- JVM 内存结构
+- GC 基础
+- 并发基础
+- 线程池
+- 锁
+- CAS
+- CompletableFuture
+- Spring Cloud Alibaba
+- Nacos
+- Gateway
+- OpenFeign
+- Sentinel
+
+### 阶段产出
+- JVM / 并发笔记
+- 微服务 demo
+- 微服务架构图
+- 服务治理说明
+
+---
+
+## 第 5 阶段：第 9～10 周
+### 目标
+整理求职输出，进入面试准备阶段
+
+### 内容
+- 项目讲稿整理
+- 高频面试题整理
+- 简历重写
+- 自我介绍优化
+- 模拟面试
+- 查漏补缺
+
+### 阶段产出
+- 简历终版
+- 项目讲稿终版
+- 面试题笔记终版
+- 知识脑图
+
+---
+
+## 七、第 1～3 天起步执行重点
+
+## 第 1 天
+### 目标
+完成工程初始化
+
+### 核心动作
+- 环境准备
+- 新建 Spring Boot 项目
+- 配置 `application.yml`
+- 创建包结构
+- 新建启动类
+- 新建健康检查接口
+- 初始化 Git
+- 创建 README
+
+### 产出
+- 项目可启动
+- `/api/health/ping` 可访问
+
+---
+
+## 第 2 天
+### 目标
+完成数据库和公共层骨架
+
+### 核心动作
+- 建库建表
+- 创建 `SysUser` Entity
+- 创建 `SysUserMapper`
+- 创建 `Result` / `ResultCode`
+- 创建 `BusinessException`
+- 创建 `GlobalExceptionHandler`
+- 配置 MyBatis-Plus 分页插件
+
+### 产出
+- 数据库连接可用
+- Mapper 查询可用
+- 公共返回结构可用
+
+---
+
+## 第 3 天
+### 目标
+完成用户模块 CRUD
+
+### 核心动作
+- 创建 `UserCreateDTO`
+- 创建 `UserUpdateDTO`
+- 创建 `UserVO`
+- 创建 `PasswordUtil`
+- 创建 `UserService`
+- 创建 `UserServiceImpl`
+- 创建 `UserController`
+- 接入参数校验
+- 测试用户 CRUD 接口
+
+### 产出
+- 用户新增、修改、删除、详情接口可用
+- 用户名重复校验可用
+- 密码加密可用
+- 逻辑删除可用
+
+---
+
+## 八、项目工程规范
+
+## 1. 包结构职责
+- `controller`：HTTP 接口层
+- `service`：业务接口定义
+- `service.impl`：业务逻辑实现
+- `mapper`：数据库访问层
+- `entity`：数据库实体类
+- `dto`：接口请求参数
+- `vo`：接口响应对象
+- `config`：Spring 配置类
+- `common/api`：统一响应结构
+- `exception`：异常定义与处理
+- `utils`：工具类
+
+## 2. 代码规范原则
+- Controller 不直接写业务逻辑
+- 不用 Entity 直接接收请求参数
+- 不直接返回 Entity 给前端
+- 接口统一返回 `Result<T>`
+- 公共异常统一由全局异常处理器处理
+- 每日代码至少一次 Git 提交
+
+---
+
+## 九、学习输出要求
+
+## 1. 每天固定输出
+- 代码提交一次
+- 写 5 行学习总结
+- 整理 3 个面试点
+
+## 2. 每周固定输出
+- 一个可运行模块
+- 一篇周总结
+- 一版项目讲解
+- 20～30 道面试题整理
+
+## 3. 最终输出物
+- 项目代码仓库
+- 项目说明文档
+- 数据库设计说明
+- 缓存设计说明
+- 项目讲稿
+- 简历
+- 面试题笔记
+
+---
+
+## 十、AI 的使用方式
+
+## 1. 可以让 AI 帮助的事情
+- 解释概念
+- 生成局部示例代码
+- Review 代码
+- 排查报错
+- 对比方案
+- 生成面试题
+- 模拟面试
+
+## 2. 不建议完全交给 AI 的事情
+- 整个项目一键生成
+- 业务逻辑全盘代写
+- 不理解就直接拷贝代码
+- 不验证就采纳代码
+
+## 3. 正确使用方式
+- 自己先设计结构
+- 自己先写关键逻辑
+- AI 用来辅助补细节、排错、解释和复盘
+
+---
+
+## 十一、技术栈建议
+
+## 单体权限后台
+- Java 17
+- Spring Boot 3.5.x
+- Maven
+- MyBatis-Plus
+- MySQL 8
+- Redis 7
+- Sa-Token
+- Knife4j
+- Docker
+
+## 订单系统
+- 延续单体技术栈
+- RabbitMQ
+
+## 微服务 Demo
+- Spring Cloud Alibaba
+- Nacos
+- Gateway
+- OpenFeign
+- Sentinel
+
+---
+
+## 十二、当前最重要的执行原则
+
+### 原则 1
+先把项目做出来，再补深层原理
+
+### 原则 2
+先形成后端岗位能力，再追求底层深度
+
+### 原则 3
+先把接口、数据库、缓存、事务、MQ 做通，再考虑复杂架构
+
+### 原则 4
+先输出项目和面试能力，再优化学习广度
+
+---
+
+## 十三、阶段性验收标准
+
+## 2 周验收
+- 单体权限后台第一版完成
+- 用户 / 角色 / 菜单 / 登录接口可用
+- Redis 接入可用
+- 基础 RBAC 模型完成
+
+## 6 周验收
+- 订单系统第一版完成
+- Redis / MQ / 幂等 / 事务场景可讲清
+
+## 8 周验收
+- 微服务 demo 跑通
+- JVM / 并发 / 微服务基础可答
+
+## 10 周验收
+- 项目讲稿、简历、面试题准备完成
+- 具备投递 Java 后端 / Java 全栈岗位能力
+
+---
+
+## 十四、总结
+
+这套学习计划的核心不是“慢慢补课”，而是：
+
+**以项目驱动方式，快速建立 Java 后端主栈能力，并把能力沉淀成项目、文档、讲稿和面试表达。**
+
+最终目标是完成从：
+
+- **前端主栈工程师**
+
+转向：
+
+- **Java 后端工程师 / Java 全栈工程师**
+
+并具备实际项目交付能力和求职竞争力。

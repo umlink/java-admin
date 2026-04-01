@@ -12,18 +12,27 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 public class SaTokenConfig implements WebMvcConfigurer {
 
+    private static final String[] OPEN_ENDPOINTS = new String[]{
+            "/api/health/**",
+            "/api/auth/login",
+            "/doc.html",
+            "/v3/api-docs",
+            "/v3/api-docs/**",
+            "/v3/api-docs.yaml",
+            "/webjars/**",
+            "/swagger-resources",
+            "/swagger-resources/**",
+            "/swagger-ui/**",
+            "/swagger-ui.html",
+            "/favicon.ico",
+            "/error",
+            "/error/**"
+    };
+
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        // 注册 Sa-Token 拦截器，校验规则为 StpUtil.checkLogin() 登录校验
         registry.addInterceptor(new SaInterceptor(handle -> StpUtil.checkLogin()))
                 .addPathPatterns("/**")
-                .excludePathPatterns(
-                        "/api/health/**",
-                        "/api/auth/login",
-                        "/doc.html",
-                        "/webjars/**",
-                        "/v3/api-docs/**",
-                        "/swagger-resources/**"
-                );
+                .excludePathPatterns(OPEN_ENDPOINTS);
     }
 }

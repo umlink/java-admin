@@ -1,5 +1,6 @@
 package com.example.admin.exception;
 
+import com.example.admin.common.api.ResultCode;
 import lombok.Getter;
 
 @Getter
@@ -9,7 +10,7 @@ public class BusinessException extends RuntimeException {
 
     public BusinessException(String message) {
         super(message);
-        this.code = 1001;
+        this.code = ResultCode.BUSINESS_ERROR;
     }
 
     public BusinessException(Integer code, String message) {

@@ -22,7 +22,7 @@ import java.util.List;
  * 角色控制器
  */
 @RestController
-@RequestMapping("/api/role")
+@RequestMapping("/role")
 @Tag(name = "角色管理", description = "角色相关接口")
 @RequiredArgsConstructor
 public class SysRoleController {

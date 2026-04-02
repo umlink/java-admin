@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.example.admin.dto.LoginDTO;
 import com.example.admin.dto.UserAssignRoleDTO;
 import com.example.admin.dto.UserCreateDTO;
+import com.example.admin.dto.UserQueryDTO;
 import com.example.admin.dto.UserUpdateDTO;
 import com.example.admin.entity.SysUser;
 import com.example.admin.vo.LoginVO;
@@ -69,7 +70,16 @@ public interface SysUserService extends IService<SysUser> {
      * @param page 分页参数
      * @return 分页用户列表
      */
+    @Deprecated
     IPage<UserVO> getUserPage(Page<SysUser> page);
+
+    /**
+     * 分页获取用户列表（支持条件筛选）
+     *
+     * @param queryDTO 查询条件
+     * @return 分页用户列表
+     */
+    IPage<UserVO> getUserPage(UserQueryDTO queryDTO);
 
     /**
      * 删除用户（逻辑删除）

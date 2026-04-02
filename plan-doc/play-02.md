@@ -9,7 +9,7 @@
 - 登录 / 登出接口
 - Token 鉴权拦截
 - 用户分页与条件筛选
-- Knife4j API 文档接入
+- Swagger API 文档接入
 
 ---
 
@@ -81,24 +81,24 @@ src/main/java/com/example/admin
    - 新增 `/api/auth/current` 接口
    - 返回当前登录用户详情
 
-3. **Knife4j API 文档**
-   - pom.xml 引入 `knife4j-openapi3-jakarta-spring-boot-starter`
-   - 配置 Knife4j
-   - 访问 `/doc.html` 查看文档
+3. **Swagger API 文档**
+   - pom.xml 引入 `springdoc-openapi-starter-webmvc-ui`
+   - 配置 SpringDoc
+   - 访问 `/swagger-ui/index.html` 查看文档
 
 4. **参数校验完善**
    - 给所有 DTO 加上 `@Validated`
    - 完善校验注解：`@NotBlank`、`@Size`、`@Pattern` 等
 
 5. **测试验证**
-   - 用 Knife4j 测试所有接口
+   - 用 Swagger 测试所有接口
    - 登录 → 获取用户列表 → 登出 流程完整
 
 ### 验收标准
 
 - 登出后 Token 失效
 - 当前用户接口正常
-- Knife4j 文档可访问
+- Swagger 文档可访问
 - 所有接口参数校验生效
 
 ---

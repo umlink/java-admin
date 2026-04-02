@@ -8,6 +8,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.admin.dto.LoginDTO;
 import com.example.admin.dto.UserAssignRoleDTO;
 import com.example.admin.dto.UserCreateDTO;
+import com.example.admin.dto.UserQueryDTO;
 import com.example.admin.dto.UserUpdateDTO;
 import com.example.admin.entity.SysRole;
 import com.example.admin.entity.SysUser;
@@ -16,6 +17,7 @@ import com.example.admin.mapper.SysUserMapper;
 import com.example.admin.service.SysRoleService;
 import com.example.admin.service.SysUserRoleService;
 import com.example.admin.service.SysUserService;
+import com.example.admin.utils.LoginRateLimiter;
 import com.example.admin.utils.PasswordUtil;
 import com.example.admin.vo.LoginVO;
 import com.example.admin.vo.UserVO;
@@ -39,26 +41,49 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
 
     private final SysRoleService sysRoleService;
 
+    private final LoginRateLimiter loginRateLimiter;
+
     @Override
     public LoginVO login(LoginDTO dto) {
+        // 检查是否被锁定
+        if (loginRateLimiter.isLocked(dto.getUsername())) {
+            long remainingSeconds = loginRateLimiter.getLockRemainingSeconds(dto.getUsername());
+            throw new BusinessException(String.format("账户已被锁定，请%d分钟后重试", (remainingSeconds + 59) / 60));
+        }
+
         // 根据用户名查询用户
         LambdaQueryWrapper<SysUser> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(SysUser::getUsername, dto.getUsername());
         SysUser user = getOne(wrapper);
 
         if (user == null) {
-            throw new BusinessException("用户名或密码错误");
+            loginRateLimiter.recordFail(dto.getUsername());
+            int remaining = loginRateLimiter.getRemainingAttempts(dto.getUsername());
+            if (remaining > 0) {
+                throw new BusinessException(String.format("用户名或密码错误，剩余尝试次数：%d", remaining));
+            } else {
+                throw new BusinessException("登录尝试次数过多，账户已被锁定30分钟");
+            }
         }
 
         // 校验密码
         if (!PasswordUtil.matches(dto.getPassword(), user.getPassword())) {
-            throw new BusinessException("用户名或密码错误");
+            loginRateLimiter.recordFail(dto.getUsername());
+            int remaining = loginRateLimiter.getRemainingAttempts(dto.getUsername());
+            if (remaining > 0) {
+                throw new BusinessException(String.format("用户名或密码错误，剩余尝试次数：%d", remaining));
+            } else {
+                throw new BusinessException("登录尝试次数过多，账户已被锁定30分钟");
+            }
         }
 
         // 校验用户状态
         if (user.getStatus() != 1) {
             throw new BusinessException("用户已被禁用");
         }
+
+        // 登录成功，清除失败记录
+        loginRateLimiter.recordSuccess(dto.getUsername());
 
         // Sa-Token 登录
         StpUtil.login(user.getId());
@@ -150,6 +175,34 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     @Override
     public IPage<UserVO> getUserPage(Page<SysUser> page) {
         Page<SysUser> userPage = page(page);
+        return userPage.convert(this::convertToVO);
+    }
+
+    @Override
+    public IPage<UserVO> getUserPage(UserQueryDTO queryDTO) {
+        // 限制最大页大小，防止大查询拖垮数据库
+        int size = Math.min(queryDTO.getSize() != null ? queryDTO.getSize() : 10, 100);
+        int pageNum = queryDTO.getPage() != null ? queryDTO.getPage() : 1;
+
+        Page<SysUser> page = new Page<>(pageNum, size);
+
+        // 构建查询条件
+        LambdaQueryWrapper<SysUser> wrapper = new LambdaQueryWrapper<>();
+
+        // 用户名模糊查询
+        if (queryDTO.getUsername() != null && !queryDTO.getUsername().isBlank()) {
+            wrapper.like(SysUser::getUsername, queryDTO.getUsername());
+        }
+
+        // 状态精确查询
+        if (queryDTO.getStatus() != null) {
+            wrapper.eq(SysUser::getStatus, queryDTO.getStatus());
+        }
+
+        // 按创建时间倒序
+        wrapper.orderByDesc(SysUser::getCreatedAt);
+
+        Page<SysUser> userPage = page(page, wrapper);
         return userPage.convert(this::convertToVO);
     }
 

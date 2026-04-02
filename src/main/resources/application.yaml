@@ -1,5 +1,7 @@
 server:
   port: 8080
+  servlet:
+    context-path: /api/v1
 
 spring:
   application:
@@ -12,7 +14,7 @@ spring:
   data:
     redis:
       host: localhost
-      port: 55001
+      port: 55000
       database: 0
       connect-timeout: 2000ms
       timeout: 3000ms
@@ -32,9 +34,6 @@ sa-token:
   active-timeout: -1
   is-concurrent: true
   is-share: false
-  token-style: uuid
+  token-style: jwt
   is-log: true
-
-# Knife4j 配置
-knife4j:
-  enable: true
+  jwt-secret-key: admin-system-secret-key-2024-jwt-hs256-default-change-me

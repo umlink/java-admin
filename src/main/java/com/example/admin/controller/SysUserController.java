@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.admin.common.api.Result;
 import com.example.admin.dto.UserAssignRoleDTO;
 import com.example.admin.dto.UserCreateDTO;
+import com.example.admin.dto.UserQueryDTO;
 import com.example.admin.dto.UserUpdateDTO;
 import com.example.admin.service.SysUserService;
 import com.example.admin.vo.UserVO;
@@ -21,7 +22,7 @@ import java.util.List;
  * 用户控制器
  */
 @RestController
-@RequestMapping("/api/user")
+@RequestMapping("/user")
 @Tag(name = "用户管理", description = "用户相关接口")
 @RequiredArgsConstructor
 public class SysUserController {
@@ -32,11 +33,9 @@ public class SysUserController {
      * 获取用户列表（分页）
      */
     @GetMapping("/list")
-    @Operation(summary = "获取用户列表", description = "分页获取用户列表")
-    public Result<IPage<UserVO>> list(
-            @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer page,
-            @Parameter(description = "每页数量") @RequestParam(defaultValue = "10") Integer size) {
-        return Result.success(sysUserService.getUserPage(new Page<>(page, size)));
+    @Operation(summary = "获取用户列表", description = "分页获取用户列表，支持按用户名模糊查询和状态筛选")
+    public Result<IPage<UserVO>> list(UserQueryDTO queryDTO) {
+        return Result.success(sysUserService.getUserPage(queryDTO));
     }
 
     /**

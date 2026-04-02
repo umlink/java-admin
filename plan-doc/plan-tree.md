@@ -254,7 +254,7 @@
 - MySQL
 - Redis
 - Sa-Token
-- Knife4j
+- Swagger
 - Docker
 
 ### 模块
@@ -609,7 +609,7 @@
 - MySQL 8
 - Redis 7
 - Sa-Token
-- Knife4j
+- Swagger
 - Docker
 
 ## 订单系统

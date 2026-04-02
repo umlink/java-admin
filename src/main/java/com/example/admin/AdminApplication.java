@@ -8,8 +8,7 @@ public class AdminApplication {
 
 	public static void main(String[] args) {
 		SpringApplication.run(AdminApplication.class, args);
-		// 打印日志
-		System.out.println("hello java 22");
+		System.out.println("started...");
 	}
 
 }

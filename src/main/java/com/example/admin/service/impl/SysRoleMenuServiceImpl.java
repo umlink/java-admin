@@ -8,7 +8,6 @@ import com.example.admin.service.SysRoleMenuService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -36,6 +35,14 @@ public class SysRoleMenuServiceImpl extends ServiceImpl<SysRoleMenuMapper, SysRo
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    public void deleteByMenuId(Long menuId) {
+        LambdaQueryWrapper<SysRoleMenu> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(SysRoleMenu::getMenuId, menuId);
+        remove(wrapper);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public void batchAdd(Long roleId, List<Long> menuIds) {
         if (menuIds == null || menuIds.isEmpty()) {
             return;
@@ -46,7 +53,6 @@ public class SysRoleMenuServiceImpl extends ServiceImpl<SysRoleMenuMapper, SysRo
             SysRoleMenu roleMenu = new SysRoleMenu();
             roleMenu.setRoleId(roleId);
             roleMenu.setMenuId(menuId);
-            roleMenu.setCreatedAt(LocalDateTime.now());
             list.add(roleMenu);
         }
         saveBatch(list);

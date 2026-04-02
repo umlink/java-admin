@@ -1,6 +1,8 @@
 package com.example.admin.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
@@ -19,6 +21,8 @@ public class RoleUpdateDTO {
     @Schema(description = "角色名称")
     private String roleName;
 
+    @Min(value = 0, message = "状态值不合法")
+    @Max(value = 1, message = "状态值不合法")
     @Schema(description = "状态：0-禁用，1-启用")
     private Integer status;
 

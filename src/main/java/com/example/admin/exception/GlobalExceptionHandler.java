@@ -1,5 +1,8 @@
 package com.example.admin.exception;
 
+import cn.dev33.satoken.exception.NotLoginException;
+import cn.dev33.satoken.exception.NotPermissionException;
+import cn.dev33.satoken.exception.NotRoleException;
 import com.example.admin.common.api.Result;
 import com.example.admin.common.api.ResultCode;
 import lombok.extern.slf4j.Slf4j;
@@ -10,6 +13,26 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(NotLoginException.class)
+    public Result<Void> handleNotLoginException(NotLoginException e) {
+        log.warn("未登录或登录态无效: type={}, message={}", e.getType(), e.getMessage());
+        String message = switch (e.getType()) {
+            case NotLoginException.NOT_TOKEN -> "未提供登录凭证";
+            case NotLoginException.INVALID_TOKEN -> "登录凭证无效";
+            case NotLoginException.TOKEN_TIMEOUT -> "登录已过期，请重新登录";
+            case NotLoginException.BE_REPLACED -> "登录已失效，账号已在其他设备登录";
+            case NotLoginException.KICK_OUT -> "登录已失效，请重新登录";
+            default -> "未登录或登录已失效";
+        };
+        return Result.fail(ResultCode.UNAUTHORIZED, message);
+    }
+
+    @ExceptionHandler({NotPermissionException.class, NotRoleException.class})
+    public Result<Void> handlePermissionException(Exception e) {
+        log.warn("无权限访问: {}", e.getMessage());
+        return Result.fail(ResultCode.FORBIDDEN, "无权限访问该资源");
+    }
 
     @ExceptionHandler(BusinessException.class)
     public Result<Void> handleBusinessException(BusinessException e) {

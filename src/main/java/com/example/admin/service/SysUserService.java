@@ -1,7 +1,6 @@
 package com.example.admin.service;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.example.admin.dto.LoginDTO;
 import com.example.admin.dto.UserAssignRoleDTO;
@@ -63,15 +62,6 @@ public interface SysUserService extends IService<SysUser> {
      * @return 用户视图对象
      */
     UserVO getUserById(Long id);
-
-    /**
-     * 分页获取用户列表
-     *
-     * @param page 分页参数
-     * @return 分页用户列表
-     */
-    @Deprecated
-    IPage<UserVO> getUserPage(Page<SysUser> page);
 
     /**
      * 分页获取用户列表（支持条件筛选）

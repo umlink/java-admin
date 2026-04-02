@@ -4,19 +4,20 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.example.admin.common.constant.EntityConstants;
 import com.example.admin.dto.MenuCreateDTO;
+import com.example.admin.dto.MenuQueryDTO;
 import com.example.admin.dto.MenuUpdateDTO;
 import com.example.admin.entity.SysMenu;
 import com.example.admin.exception.BusinessException;
 import com.example.admin.mapper.SysMenuMapper;
 import com.example.admin.service.SysMenuService;
+import com.example.admin.service.SysRoleMenuService;
 import com.example.admin.vo.MenuVO;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -28,11 +29,13 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> implements SysMenuService {
 
+    private final SysRoleMenuService sysRoleMenuService;
+
     @Override
-    public List<SysMenu> getMenuTree() {
+    public List<MenuVO> getMenuTree() {
         // 查询所有启用的菜单
         LambdaQueryWrapper<SysMenu> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(SysMenu::getStatus, 1);
+        wrapper.eq(SysMenu::getStatus, EntityConstants.STATUS_ENABLED);
         wrapper.orderByAsc(SysMenu::getSortNum);
         List<SysMenu> allMenus = list(wrapper);
 
@@ -44,16 +47,15 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
     @Transactional(rollbackFor = Exception.class)
     public MenuVO createMenu(MenuCreateDTO dto) {
         SysMenu menu = new SysMenu();
-        BeanUtils.copyProperties(dto, menu);
-
-        // 设置默认值
-        if (menu.getSortNum() == null) {
-            menu.setSortNum(0);
-        }
-        menu.setStatus(1);
-        menu.setDeleted(0);
-        menu.setCreatedAt(LocalDateTime.now());
-        menu.setUpdatedAt(LocalDateTime.now());
+        menu.setParentId(dto.getParentId());
+        menu.setMenuName(dto.getMenuName());
+        menu.setMenuType(dto.getMenuType());
+        menu.setPath(dto.getPath());
+        menu.setComponent(dto.getComponent());
+        menu.setPermissionCode(dto.getPermissionCode());
+        menu.setSortNum(dto.getSortNum() != null ? dto.getSortNum() : 0);
+        menu.setStatus(EntityConstants.STATUS_ENABLED);
+        menu.setDeleted(EntityConstants.DELETED_NO);
 
         save(menu);
         return convertToVO(menu);
@@ -92,7 +94,6 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
             menu.setStatus(dto.getStatus());
         }
 
-        menu.setUpdatedAt(LocalDateTime.now());
         updateById(menu);
         return convertToVO(menu);
     }
@@ -107,9 +108,21 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
     }
 
     @Override
-    public IPage<MenuVO> getMenuPage(Page<SysMenu> page) {
-        Page<SysMenu> menuPage = page(page);
-        return menuPage.convert(this::convertToVO);
+    public IPage<MenuVO> getMenuPage(MenuQueryDTO queryDTO) {
+        int size = Math.min(queryDTO.getPageSize() != null ? queryDTO.getPageSize() : 10, 100);
+        int pageNum = queryDTO.getPageNum() != null ? queryDTO.getPageNum() : 1;
+        Page<SysMenu> page = new Page<>(pageNum, size);
+
+        LambdaQueryWrapper<SysMenu> wrapper = new LambdaQueryWrapper<>();
+        if (queryDTO.getMenuName() != null && !queryDTO.getMenuName().isBlank()) {
+            wrapper.like(SysMenu::getMenuName, queryDTO.getMenuName());
+        }
+        if (queryDTO.getStatus() != null) {
+            wrapper.eq(SysMenu::getStatus, queryDTO.getStatus());
+        }
+        wrapper.orderByAsc(SysMenu::getSortNum);
+
+        return page(page, wrapper).convert(this::convertToVO);
     }
 
     @Override
@@ -119,24 +132,27 @@ public class SysMenuServiceImpl extends ServiceImpl<SysMenuMapper, SysMenu> impl
         if (menu == null) {
             throw new BusinessException("菜单不存在");
         }
+        // 检查是否存在子菜单，有子菜单时禁止删除，防止产生悬空引用
+        LambdaQueryWrapper<SysMenu> childWrapper = new LambdaQueryWrapper<>();
+        childWrapper.eq(SysMenu::getParentId, id);
+        if (count(childWrapper) > 0) {
+            throw new BusinessException("存在子菜单，请先删除子菜单");
+        }
+        // 清除该菜单的角色关联，防止残留权限记录
+        sysRoleMenuService.deleteByMenuId(id);
         removeById(id);
     }
 
     /**
-     * 递归构建菜单树
-     *
-     * @param menus    所有菜单列表
-     * @param parentId 父菜单ID
-     * @return 树形菜单
+     * 递归构建菜单树，返回 MenuVO 列表（含 children）
      */
-    private List<SysMenu> buildTree(List<SysMenu> menus, Long parentId) {
-        List<SysMenu> tree = new ArrayList<>();
+    private List<MenuVO> buildTree(List<SysMenu> menus, Long parentId) {
+        List<MenuVO> tree = new ArrayList<>();
         for (SysMenu menu : menus) {
             if (menu.getParentId().equals(parentId)) {
-                // 递归查找子菜单
-                List<SysMenu> children = buildTree(menus, menu.getId());
-                // 使用反射设置子菜单（实体类中没有children字段，这里简化处理，实际项目中可以创建VO）
-                tree.add(menu);
+                MenuVO vo = convertToVO(menu);
+                vo.setChildren(buildTree(menus, menu.getId()));
+                tree.add(vo);
             }
         }
         return tree;

@@ -1,10 +1,10 @@
 package com.example.admin.service;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.example.admin.dto.RoleAssignMenuDTO;
 import com.example.admin.dto.RoleCreateDTO;
+import com.example.admin.dto.RoleQueryDTO;
 import com.example.admin.dto.RoleUpdateDTO;
 import com.example.admin.entity.SysRole;
 import com.example.admin.vo.RoleVO;
@@ -44,10 +44,10 @@ public interface SysRoleService extends IService<SysRole> {
     /**
      * 分页获取角色列表
      *
-     * @param page 分页参数
+     * @param queryDTO 查询条件
      * @return 分页角色列表
      */
-    IPage<RoleVO> getRolePage(Page<SysRole> page);
+    IPage<RoleVO> getRolePage(RoleQueryDTO queryDTO);
 
     /**
      * 删除角色

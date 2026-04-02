@@ -1,31 +1,26 @@
-# 基础约束规则和前置信息
+# 基础约束
 
-- 项目进度完成按照计划进行
-- 项目需求计划在项目下 `plan-doc ` 文件夹中, `plan-tree.md` 为工作大纲
+- 项目需求计划：`plan-doc/` 目录，`plan-tree.md` 为工作大纲，`play-{n}.md` 为各阶段计划
 - 编码前不能新增需求外的代码
-- 稍微复杂的逻辑需要自动添加注释信息
-- 项目 sql 文件位置 `src/main/resources/sql/init.sql`
-- 项目 sql 初始化数据位置 `src/main/resources/sql/init-data.sql`
+- 稍微复杂的逻辑需要自动添加注释
 - 代码逻辑需要考虑各种边界情况
-- 每完成一次任务需要记录整体计划的进度和当前大计划下未完成的内容输出到 `plan-doc/process.md`
-- 大计划的定义为 `plan-doc` 目录下格式为 `play-${数字}.md` 开头的文件，数字顺序即为计划顺序
+- SQL 文件：`src/main/resources/sql/`（参考用），迁移脚本：`src/main/resources/db/migration/`
+- 每完成一次任务更新 `plan-doc/process.md`
+- 开始编码工作前必须先列出工作记录，必须等我确认后才能继续
 
 # 编码规则
 
-- 添加依赖时需要检测依赖是否有漏洞，只能安装安全的依赖版本
-- 编码过程中需要严格考虑安全问题
-- 编码在保证逻辑实现的前提下就足够精简、高级、高效
-- 编码过程中要严格考虑内存泄露风险
-- 不要在用 @Override 了，使用 spring boot 3推荐的 @RequiredArgsConstructor + final 字段。
-- 对于包中 api 和方法的使用需要考虑是否废弃如：（DTO 中 使用 requiredMode = Schema.RequiredMode.REQUIRED 来替换 required = true)
+- 添加依赖前检测漏洞，只使用安全版本
+- 编码严格考虑安全问题和内存泄露风险
+- 使用 `@RequiredArgsConstructor + final` 字段注入
+- DTO 中使用 `requiredMode = Schema.RequiredMode.REQUIRED` 替代 `required = true`
+- 审计字段规范：`createdAt/updatedAt` 由 MySQL 维护；`createdBy/updatedBy` 由 `AuditMetaObjectHandler` 填充，Service 层不赋值
+- 分页参数：统一 `pageNum`（默认1）/ `pageSize`（默认10）
+- 分页接口：查询参数 > 1 个用 POST + QueryDTO，仅分页参数可用 GET
+- 每次执行变更任务后列出变更项条目
 
-[//]: # (- 每次完成一项功能时，需要跟需求说明确认逻辑实现是否遗漏，功能必须正常)
+# 进度更新规范（plan-doc/process.md）
 
-## 进度更新规范（文件：`plan-doc/process.md`）
-
-- 主要记录大计划进度和当前进行中大计划的详细小计划进度
-- 其他任务进度内容可以临时记录，但完成后需要删除
-- 每次任务执行后更新，小任务的完成项不需要持续记录
-- 历史已完成项目自动清理
-- 对话中出现记录进度信息是，自动更新
-- 收到更新进度任务时，清理完成的小任务记录
+- 记录：大计划进度 + 当前进行中计划的未完成项 + 遗留问题
+- 已完成内容自动清理，不重复记录
+- 新对话首句：「读取 plan-doc/process.md，继续 Play-XX」

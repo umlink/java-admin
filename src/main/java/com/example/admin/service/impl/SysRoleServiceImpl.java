@@ -4,8 +4,11 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.example.admin.common.constant.EntityConstants;
+import com.example.admin.config.StpInterfaceImpl;
 import com.example.admin.dto.RoleAssignMenuDTO;
 import com.example.admin.dto.RoleCreateDTO;
+import com.example.admin.dto.RoleQueryDTO;
 import com.example.admin.dto.RoleUpdateDTO;
 import com.example.admin.entity.SysRole;
 import com.example.admin.entity.SysMenu;
@@ -14,13 +17,14 @@ import com.example.admin.mapper.SysRoleMapper;
 import com.example.admin.service.SysRoleMenuService;
 import com.example.admin.service.SysRoleService;
 import com.example.admin.service.SysMenuService;
+import com.example.admin.service.SysUserRoleService;
+import com.example.admin.utils.RedisUtil;
 import com.example.admin.vo.RoleVO;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -35,6 +39,10 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
 
     private final SysMenuService sysMenuService;
 
+    private final SysUserRoleService sysUserRoleService;
+
+    private final RedisUtil redisUtil;
+
     @Override
     @Transactional(rollbackFor = Exception.class)
     public RoleVO createRole(RoleCreateDTO dto) {
@@ -44,13 +52,13 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
         }
 
         SysRole role = new SysRole();
-        BeanUtils.copyProperties(dto, role);
+        role.setRoleCode(dto.getRoleCode());
+        role.setRoleName(dto.getRoleName());
+        role.setRemark(dto.getRemark());
 
         // 设置默认值
-        role.setStatus(1);
-        role.setDeleted(0);
-        role.setCreatedAt(LocalDateTime.now());
-        role.setUpdatedAt(LocalDateTime.now());
+        role.setStatus(EntityConstants.STATUS_ENABLED);
+        role.setDeleted(EntityConstants.DELETED_NO);
 
         save(role);
 
@@ -83,7 +91,6 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
             role.setRemark(dto.getRemark());
         }
 
-        role.setUpdatedAt(LocalDateTime.now());
         updateById(role);
 
         return convertToVO(role);
@@ -99,9 +106,21 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
     }
 
     @Override
-    public IPage<RoleVO> getRolePage(Page<SysRole> page) {
-        Page<SysRole> rolePage = page(page);
-        return rolePage.convert(this::convertToVO);
+    public IPage<RoleVO> getRolePage(RoleQueryDTO queryDTO) {
+        int size = Math.min(queryDTO.getPageSize() != null ? queryDTO.getPageSize() : 10, 100);
+        int pageNum = queryDTO.getPageNum() != null ? queryDTO.getPageNum() : 1;
+        Page<SysRole> page = new Page<>(pageNum, size);
+
+        LambdaQueryWrapper<SysRole> wrapper = new LambdaQueryWrapper<>();
+        if (queryDTO.getRoleName() != null && !queryDTO.getRoleName().isBlank()) {
+            wrapper.like(SysRole::getRoleName, queryDTO.getRoleName());
+        }
+        if (queryDTO.getStatus() != null) {
+            wrapper.eq(SysRole::getStatus, queryDTO.getStatus());
+        }
+        wrapper.orderByDesc(SysRole::getCreatedAt);
+
+        return page(page, wrapper).convert(this::convertToVO);
     }
 
     @Override
@@ -111,10 +130,24 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
         if (role == null) {
             throw new BusinessException("角色不存在");
         }
-        // 先删除角色菜单关联
+        // 查出该角色下所有用户ID，用于后续清缓存
+        List<Long> affectedUserIds = sysUserRoleService.getUserIdsByRoleId(id);
+        // 清除用户角色关联
+        sysUserRoleService.deleteByRoleId(id);
+        // 清除角色菜单关联
         sysRoleMenuService.deleteByRoleId(id);
-        // 再删除角色
+        // 删除角色
         removeById(id);
+        // 清除受影响用户的权限缓存
+        if (!affectedUserIds.isEmpty()) {
+            final String[] keys = affectedUserIds.stream()
+                    .flatMap(uid -> java.util.stream.Stream.of(
+                            StpInterfaceImpl.PERM_KEY_PREFIX + uid,
+                            StpInterfaceImpl.ROLE_KEY_PREFIX + uid
+                    ))
+                    .toArray(String[]::new);
+            redisUtil.del(keys);
+        }
     }
 
     @Override
@@ -135,23 +168,21 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void assignMenus(RoleAssignMenuDTO dto) {
-        // 检查角色是否存在
-        SysRole role = getById(dto.getRoleId());
+        // FOR UPDATE 锁住角色行，防止并发 assignMenus 互相覆盖
+        SysRole role = getBaseMapper().selectForUpdate(dto.getRoleId());
         if (role == null) {
             throw new BusinessException("角色不存在");
         }
 
-        List<Long> menuIds = dto.getMenuIds();
-        if (menuIds != null && !menuIds.isEmpty()) {
-            // 问题7：去重
-            menuIds = menuIds.stream().distinct().collect(Collectors.toList());
+        List<Long> menuIds = dto.getMenuIds() != null
+                ? dto.getMenuIds().stream().distinct().collect(Collectors.toList())
+                : new ArrayList<>();
 
-            // 问题4：验证菜单ID是否存在
-            for (Long menuId : menuIds) {
-                SysMenu menu = sysMenuService.getById(menuId);
-                if (menu == null) {
-                    throw new BusinessException("菜单ID不存在: " + menuId);
-                }
+        if (!menuIds.isEmpty()) {
+            // 批量校验菜单ID有效性（避免 N+1 查询）
+            List<SysMenu> menus = sysMenuService.listByIds(menuIds);
+            if (menus.size() != menuIds.size()) {
+                throw new BusinessException("存在无效的菜单ID");
             }
         }
 
@@ -160,6 +191,18 @@ public class SysRoleServiceImpl extends ServiceImpl<SysRoleMapper, SysRole> impl
 
         // 再批量添加新菜单
         sysRoleMenuService.batchAdd(dto.getRoleId(), menuIds);
+
+        // 清除该角色下所有用户的权限缓存，使下次鉴权重新从DB加载
+        List<Long> userIds = sysUserRoleService.getUserIdsByRoleId(dto.getRoleId());
+        if (!userIds.isEmpty()) {
+            final String[] keys = userIds.stream()
+                    .flatMap(uid -> java.util.stream.Stream.of(
+                            StpInterfaceImpl.PERM_KEY_PREFIX + uid,
+                            StpInterfaceImpl.ROLE_KEY_PREFIX + uid
+                    ))
+                    .toArray(String[]::new);
+            redisUtil.del(keys);
+        }
     }
 
     /**

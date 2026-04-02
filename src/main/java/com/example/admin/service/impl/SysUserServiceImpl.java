@@ -5,6 +5,8 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.example.admin.common.constant.EntityConstants;
+import com.example.admin.config.StpInterfaceImpl;
 import com.example.admin.dto.LoginDTO;
 import com.example.admin.dto.UserAssignRoleDTO;
 import com.example.admin.dto.UserCreateDTO;
@@ -19,14 +21,13 @@ import com.example.admin.service.SysUserRoleService;
 import com.example.admin.service.SysUserService;
 import com.example.admin.utils.LoginRateLimiter;
 import com.example.admin.utils.PasswordUtil;
+import com.example.admin.utils.RedisUtil;
 import com.example.admin.vo.LoginVO;
 import com.example.admin.vo.UserVO;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -42,6 +43,8 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     private final SysRoleService sysRoleService;
 
     private final LoginRateLimiter loginRateLimiter;
+
+    private final RedisUtil redisUtil;
 
     @Override
     public LoginVO login(LoginDTO dto) {
@@ -66,6 +69,11 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
             }
         }
 
+        // 先校验状态，禁用账户不进行密码校验也不计失败次数
+        if (user.getStatus() != EntityConstants.STATUS_ENABLED) {
+            throw new BusinessException("用户已被禁用");
+        }
+
         // 校验密码
         if (!PasswordUtil.matches(dto.getPassword(), user.getPassword())) {
             loginRateLimiter.recordFail(dto.getUsername());
@@ -75,11 +83,6 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
             } else {
                 throw new BusinessException("登录尝试次数过多，账户已被锁定30分钟");
             }
-        }
-
-        // 校验用户状态
-        if (user.getStatus() != 1) {
-            throw new BusinessException("用户已被禁用");
         }
 
         // 登录成功，清除失败记录
@@ -120,16 +123,17 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         }
 
         SysUser user = new SysUser();
-        BeanUtils.copyProperties(dto, user);
+        user.setUsername(dto.getUsername());
+        user.setNickname(dto.getNickname());
+        user.setPhone(dto.getPhone());
+        user.setEmail(dto.getEmail());
 
         // 加密密码
         user.setPassword(PasswordUtil.encode(dto.getPassword()));
 
         // 设置默认值
-        user.setStatus(1);
-        user.setDeleted(0);
-        user.setCreatedAt(LocalDateTime.now());
-        user.setUpdatedAt(LocalDateTime.now());
+        user.setStatus(EntityConstants.STATUS_ENABLED);
+        user.setDeleted(EntityConstants.DELETED_NO);
 
         save(user);
 
@@ -157,7 +161,6 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
             user.setStatus(dto.getStatus());
         }
 
-        user.setUpdatedAt(LocalDateTime.now());
         updateById(user);
 
         return convertToVO(user);
@@ -173,16 +176,10 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     }
 
     @Override
-    public IPage<UserVO> getUserPage(Page<SysUser> page) {
-        Page<SysUser> userPage = page(page);
-        return userPage.convert(this::convertToVO);
-    }
-
-    @Override
     public IPage<UserVO> getUserPage(UserQueryDTO queryDTO) {
         // 限制最大页大小，防止大查询拖垮数据库
-        int size = Math.min(queryDTO.getSize() != null ? queryDTO.getSize() : 10, 100);
-        int pageNum = queryDTO.getPage() != null ? queryDTO.getPage() : 1;
+        int size = Math.min(queryDTO.getPageSize() != null ? queryDTO.getPageSize() : 10, 100);
+        int pageNum = queryDTO.getPageNum() != null ? queryDTO.getPageNum() : 1;
 
         Page<SysUser> page = new Page<>(pageNum, size);
 
@@ -209,11 +206,22 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void deleteUser(Long id) {
+        // 禁止删除当前登录用户自身
+        if (id.equals(StpUtil.getLoginIdAsLong())) {
+            throw new BusinessException("不能删除当前登录用户");
+        }
         SysUser user = getById(id);
         if (user == null) {
             throw new BusinessException("用户不存在");
         }
+        // 清除用户角色关联
+        sysUserRoleService.deleteByUserId(id);
         removeById(id);
+        // 清除权限缓存
+        redisUtil.del(
+                StpInterfaceImpl.PERM_KEY_PREFIX + id,
+                StpInterfaceImpl.ROLE_KEY_PREFIX + id
+        );
     }
 
     @Override
@@ -250,8 +258,8 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void assignRoles(UserAssignRoleDTO dto) {
-        // 检查用户是否存在
-        SysUser user = getById(dto.getUserId());
+        // FOR UPDATE 锁住用户行，防止并发 assignRoles 互相覆盖
+        SysUser user = getBaseMapper().selectForUpdate(dto.getUserId());
         if (user == null) {
             throw new BusinessException("用户不存在");
         }
@@ -259,11 +267,11 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
         // 去重角色ID
         List<Long> roleIds = dto.getRoleIds().stream().distinct().collect(Collectors.toList());
 
-        // 验证角色ID有效性
-        for (Long roleId : roleIds) {
-            SysRole role = sysRoleService.getById(roleId);
-            if (role == null) {
-                throw new BusinessException("角色ID不存在: " + roleId);
+        // 批量校验角色ID有效性（避免 N+1 查询）
+        if (!roleIds.isEmpty()) {
+            List<SysRole> roles = sysRoleService.listByIds(roleIds);
+            if (roles.size() != roleIds.size()) {
+                throw new BusinessException("存在无效的角色ID");
             }
         }
 
@@ -272,5 +280,11 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
 
         // 再批量添加新角色
         sysUserRoleService.batchAdd(dto.getUserId(), roleIds);
+
+        // 清除该用户的权限/角色缓存，使下次鉴权重新从DB加载
+        redisUtil.del(
+                StpInterfaceImpl.PERM_KEY_PREFIX + dto.getUserId(),
+                StpInterfaceImpl.ROLE_KEY_PREFIX + dto.getUserId()
+        );
     }
 }

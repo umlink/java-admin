@@ -1,9 +1,9 @@
 package com.example.admin.service;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.example.admin.dto.MenuCreateDTO;
+import com.example.admin.dto.MenuQueryDTO;
 import com.example.admin.dto.MenuUpdateDTO;
 import com.example.admin.entity.SysMenu;
 import com.example.admin.vo.MenuVO;
@@ -20,7 +20,7 @@ public interface SysMenuService extends IService<SysMenu> {
      *
      * @return 菜单树
      */
-    List<SysMenu> getMenuTree();
+    List<MenuVO> getMenuTree();
 
     /**
      * 创建菜单
@@ -50,10 +50,10 @@ public interface SysMenuService extends IService<SysMenu> {
     /**
      * 分页查询菜单
      *
-     * @param page 分页参数
+     * @param queryDTO 查询条件
      * @return 菜单分页数据
      */
-    IPage<MenuVO> getMenuPage(Page<SysMenu> page);
+    IPage<MenuVO> getMenuPage(MenuQueryDTO queryDTO);
 
     /**
      * 删除菜单

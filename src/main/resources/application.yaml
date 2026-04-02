@@ -18,10 +18,19 @@ spring:
       database: 0
       connect-timeout: 2000ms
       timeout: 3000ms
+  flyway:
+    enabled: true
+    # 迁移脚本目录，默认 classpath:db/migration
+    locations: classpath:db/migration
+    # 允许对非空数据库执行迁移（首次接入已有库时需要）
+    baseline-on-migrate: true
+    baseline-version: 0
+    # 编码
+    encoding: UTF-8
 
 mybatis-plus:
   configuration:
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
   global-config:
     db-config:
       logic-delete-field: deleted

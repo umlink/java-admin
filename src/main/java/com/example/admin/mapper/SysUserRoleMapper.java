@@ -29,4 +29,11 @@ public interface SysUserRoleMapper extends BaseMapper<SysUserRole> {
             "LEFT JOIN sys_role r ON ur.role_id = r.id " +
             "WHERE ur.user_id = #{userId} AND r.status = 1 AND r.deleted = 0")
     List<Long> selectRoleIdsByUserId(@Param("userId") Long userId);
+
+    /**
+     * 根据角色ID查询用户ID列表（用于角色权限变更时清缓存）
+     */
+    @Select("SELECT ur.user_id FROM sys_user_role ur WHERE ur.role_id = #{roleId}")
+    List<Long> selectUserIdsByRoleId(@Param("roleId") Long roleId);
+
 }

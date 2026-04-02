@@ -1,12 +1,13 @@
 package com.example.admin.controller;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.admin.common.api.Result;
 import com.example.admin.dto.RoleAssignMenuDTO;
 import com.example.admin.dto.RoleCreateDTO;
+import com.example.admin.dto.RoleQueryDTO;
 import com.example.admin.dto.RoleUpdateDTO;
-import com.example.admin.entity.SysRole;
+import cn.dev33.satoken.annotation.SaCheckPermission;
+import com.example.admin.common.constant.PermissionConstants;
 import com.example.admin.service.SysRoleService;
 import com.example.admin.vo.RoleVO;
 import io.swagger.v3.oas.annotations.Operation;
@@ -30,20 +31,20 @@ public class SysRoleController {
     private final SysRoleService sysRoleService;
 
     /**
-     * 获取角色列表
+     * 获取角色列表（分页，查询参数超过1个使用POST）
      */
-    @GetMapping("/list")
-    @Operation(summary = "获取角色列表", description = "分页获取角色列表")
-    public Result<IPage<RoleVO>> list(
-            @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer page,
-            @Parameter(description = "每页数量") @RequestParam(defaultValue = "10") Integer size) {
-        return Result.success(sysRoleService.getRolePage(new Page<>(page, size)));
+    @PostMapping("/list")
+    @SaCheckPermission(PermissionConstants.ROLE_LIST)
+    @Operation(summary = "获取角色列表", description = "分页获取角色列表，支持按角色名称和状态筛选")
+    public Result<IPage<RoleVO>> list(@RequestBody RoleQueryDTO queryDTO) {
+        return Result.success(sysRoleService.getRolePage(queryDTO));
     }
 
     /**
      * 获取角色详情
      */
     @GetMapping("/{id}")
+    @SaCheckPermission(PermissionConstants.ROLE_LIST)
     @Operation(summary = "获取角色详情", description = "根据ID获取角色详情")
     public Result<RoleVO> getById(@Parameter(description = "角色ID") @PathVariable Long id) {
         return Result.success(sysRoleService.getRoleById(id));
@@ -53,6 +54,7 @@ public class SysRoleController {
      * 新增角色
      */
     @PostMapping
+    @SaCheckPermission(PermissionConstants.ROLE_CREATE)
     @Operation(summary = "新增角色", description = "创建新角色")
     public Result<RoleVO> save(@Valid @RequestBody RoleCreateDTO dto) {
         return Result.success(sysRoleService.createRole(dto));
@@ -62,6 +64,7 @@ public class SysRoleController {
      * 修改角色
      */
     @PutMapping("/{id}")
+    @SaCheckPermission(PermissionConstants.ROLE_UPDATE)
     @Operation(summary = "修改角色", description = "更新角色信息")
     public Result<RoleVO> update(
             @Parameter(description = "角色ID") @PathVariable Long id,
@@ -73,6 +76,7 @@ public class SysRoleController {
      * 删除角色
      */
     @DeleteMapping("/{id}")
+    @SaCheckPermission(PermissionConstants.ROLE_DELETE)
     @Operation(summary = "删除角色", description = "根据ID删除角色")
     public Result<Void> delete(@Parameter(description = "角色ID") @PathVariable Long id) {
         sysRoleService.deleteRole(id);
@@ -83,6 +87,7 @@ public class SysRoleController {
      * 获取角色拥有的菜单ID列表
      */
     @GetMapping("/{id}/menus")
+    @SaCheckPermission(PermissionConstants.ROLE_LIST)
     @Operation(summary = "获取角色菜单", description = "获取角色拥有的菜单ID列表")
     public Result<List<Long>> getRoleMenus(@Parameter(description = "角色ID") @PathVariable Long id) {
         return Result.success(sysRoleService.getRoleMenuIds(id));
@@ -92,6 +97,7 @@ public class SysRoleController {
      * 给角色分配菜单
      */
     @PostMapping("/assign-menus")
+    @SaCheckPermission(PermissionConstants.ROLE_ASSIGN_MENU)
     @Operation(summary = "分配菜单", description = "给角色分配菜单")
     public Result<Void> assignMenus(@Valid @RequestBody RoleAssignMenuDTO dto) {
         sysRoleService.assignMenus(dto);

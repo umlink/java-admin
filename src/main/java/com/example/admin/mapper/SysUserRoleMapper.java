@@ -1,6 +1,7 @@
 package com.example.admin.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.example.admin.entity.SysRole;
 import com.example.admin.entity.SysUserRole;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -35,5 +36,14 @@ public interface SysUserRoleMapper extends BaseMapper<SysUserRole> {
      */
     @Select("SELECT ur.user_id FROM sys_user_role ur WHERE ur.role_id = #{roleId}")
     List<Long> selectUserIdsByRoleId(@Param("roleId") Long roleId);
+
+    /**
+     * 根据用户ID查询角色列表
+     */
+    @Select("SELECT r.* FROM sys_user_role ur " +
+            "LEFT JOIN sys_role r ON ur.role_id = r.id " +
+            "WHERE ur.user_id = #{userId} AND r.status = 1 AND r.deleted = 0 " +
+            "ORDER BY r.created_at DESC")
+    List<SysRole> selectRolesByUserId(@Param("userId") Long userId);
 
 }

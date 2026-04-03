@@ -9,6 +9,7 @@ import com.example.admin.dto.UserQueryDTO;
 import com.example.admin.dto.UserUpdateDTO;
 import com.example.admin.entity.SysUser;
 import com.example.admin.vo.LoginVO;
+import com.example.admin.vo.PermissionVO;
 import com.example.admin.vo.UserVO;
 
 import java.util.List;
@@ -101,4 +102,11 @@ public interface SysUserService extends IService<SysUser> {
      * @param dto 分配请求
      */
     void assignRoles(UserAssignRoleDTO dto);
+
+    /**
+     * 获取当前用户权限聚合信息
+     *
+     * @return 权限聚合视图对象
+     */
+    PermissionVO getPermissionInfo();
 }

@@ -6,16 +6,20 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.admin.common.constant.EntityConstants;
+import com.example.admin.common.constant.PermissionConstants;
 import com.example.admin.config.StpInterfaceImpl;
 import com.example.admin.dto.LoginDTO;
 import com.example.admin.dto.UserAssignRoleDTO;
 import com.example.admin.dto.UserCreateDTO;
 import com.example.admin.dto.UserQueryDTO;
 import com.example.admin.dto.UserUpdateDTO;
+import com.example.admin.entity.SysMenu;
 import com.example.admin.entity.SysRole;
 import com.example.admin.entity.SysUser;
 import com.example.admin.exception.BusinessException;
+import com.example.admin.mapper.SysMenuMapper;
 import com.example.admin.mapper.SysUserMapper;
+import com.example.admin.mapper.SysUserRoleMapper;
 import com.example.admin.service.SysRoleService;
 import com.example.admin.service.SysUserRoleService;
 import com.example.admin.service.SysUserService;
@@ -23,12 +27,18 @@ import com.example.admin.utils.LoginRateLimiter;
 import com.example.admin.utils.PasswordUtil;
 import com.example.admin.utils.RedisUtil;
 import com.example.admin.vo.LoginVO;
+import com.example.admin.vo.MenuVO;
+import com.example.admin.vo.PermissionVO;
+import com.example.admin.vo.RoleVO;
 import com.example.admin.vo.UserVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -45,6 +55,10 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
     private final LoginRateLimiter loginRateLimiter;
 
     private final RedisUtil redisUtil;
+
+    private final SysUserRoleMapper sysUserRoleMapper;
+
+    private final SysMenuMapper sysMenuMapper;
 
     @Override
     public LoginVO login(LoginDTO dto) {
@@ -90,6 +104,7 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
 
         // Sa-Token 登录
         StpUtil.login(user.getId());
+        StpUtil.getSession().set("username", user.getUsername());
         String token = StpUtil.getTokenValue();
 
         // 返回登录信息
@@ -286,5 +301,110 @@ public class SysUserServiceImpl extends ServiceImpl<SysUserMapper, SysUser> impl
                 StpInterfaceImpl.PERM_KEY_PREFIX + dto.getUserId(),
                 StpInterfaceImpl.ROLE_KEY_PREFIX + dto.getUserId()
         );
+    }
+
+    @Override
+    public PermissionVO getPermissionInfo() {
+        Long userId = StpUtil.getLoginIdAsLong();
+        SysUser user = getById(userId);
+        if (user == null) {
+            throw new BusinessException("用户不存在");
+        }
+
+        // 查询用户角色
+        List<SysRole> roles = sysUserRoleMapper.selectRolesByUserId(userId);
+        List<RoleVO> roleVOs = roles.stream()
+                .map(this::convertRoleToVO)
+                .collect(Collectors.toList());
+
+        // 超管返回所有菜单和通配符权限
+        boolean isSuperAdmin = roles.stream()
+                .anyMatch(r -> PermissionConstants.SUPER_ADMIN_ROLE.equals(r.getRoleCode()));
+
+        List<MenuVO> menuVOs;
+        Set<String> permissions;
+
+        if (isSuperAdmin) {
+            // 超管：获取所有启用菜单
+            LambdaQueryWrapper<SysMenu> menuWrapper = new LambdaQueryWrapper<>();
+            menuWrapper.eq(SysMenu::getStatus, EntityConstants.STATUS_ENABLED);
+            menuWrapper.orderByAsc(SysMenu::getSortNum);
+            List<SysMenu> allMenus = sysMenuMapper.selectList(menuWrapper);
+            menuVOs = buildMenuTree(allMenus, 0L);
+            permissions = Set.of(PermissionConstants.ALL_PERMISSIONS);
+        } else {
+            // 普通用户：根据角色获取菜单
+            List<Long> roleIds = roles.stream()
+                    .map(SysRole::getId)
+                    .collect(Collectors.toList());
+            if (roleIds.isEmpty()) {
+                menuVOs = new ArrayList<>();
+                permissions = new HashSet<>();
+            } else {
+                List<SysMenu> menus = sysMenuMapper.selectMenusByRoleIds(roleIds);
+                menuVOs = buildMenuTree(menus, 0L);
+                // 获取权限码
+                permissions = menus.stream()
+                        .map(SysMenu::getPermissionCode)
+                        .filter(code -> code != null && !code.isBlank())
+                        .collect(Collectors.toSet());
+            }
+        }
+
+        return PermissionVO.builder()
+                .user(convertToVO(user))
+                .roles(roleVOs)
+                .menus(menuVOs)
+                .permissions(permissions)
+                .build();
+    }
+
+    /**
+     * 递归构建菜单树
+     */
+    private List<MenuVO> buildMenuTree(List<SysMenu> menus, Long parentId) {
+        List<MenuVO> tree = new ArrayList<>();
+        for (SysMenu menu : menus) {
+            if (menu.getParentId().equals(parentId)) {
+                MenuVO vo = convertMenuToVO(menu);
+                vo.setChildren(buildMenuTree(menus, menu.getId()));
+                tree.add(vo);
+            }
+        }
+        return tree;
+    }
+
+    /**
+     * SysRole 转换为 RoleVO
+     */
+    private RoleVO convertRoleToVO(SysRole role) {
+        return RoleVO.builder()
+                .id(role.getId())
+                .roleCode(role.getRoleCode())
+                .roleName(role.getRoleName())
+                .status(role.getStatus())
+                .remark(role.getRemark())
+                .createdAt(role.getCreatedAt())
+                .updatedAt(role.getUpdatedAt())
+                .build();
+    }
+
+    /**
+     * SysMenu 转换为 MenuVO
+     */
+    private MenuVO convertMenuToVO(SysMenu menu) {
+        return MenuVO.builder()
+                .id(menu.getId())
+                .parentId(menu.getParentId())
+                .menuName(menu.getMenuName())
+                .menuType(menu.getMenuType())
+                .path(menu.getPath())
+                .component(menu.getComponent())
+                .permissionCode(menu.getPermissionCode())
+                .sortNum(menu.getSortNum())
+                .status(menu.getStatus())
+                .createdAt(menu.getCreatedAt())
+                .updatedAt(menu.getUpdatedAt())
+                .build();
     }
 }

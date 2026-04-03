@@ -1,12 +1,14 @@
 package com.example.admin.controller;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import cn.dev33.satoken.annotation.SaCheckPermission;
+import com.example.admin.annotation.OperateLog;
+import com.example.admin.annotation.RepeatSubmit;
 import com.example.admin.common.api.Result;
+import com.example.admin.common.constant.PermissionConstants;
 import com.example.admin.dto.MenuCreateDTO;
 import com.example.admin.dto.MenuQueryDTO;
 import com.example.admin.dto.MenuUpdateDTO;
-import cn.dev33.satoken.annotation.SaCheckPermission;
-import com.example.admin.common.constant.PermissionConstants;
 import com.example.admin.service.SysMenuService;
 import com.example.admin.vo.MenuVO;
 import io.swagger.v3.oas.annotations.Operation;
@@ -34,7 +36,8 @@ public class SysMenuController {
      */
     @PostMapping("/list")
     @SaCheckPermission(PermissionConstants.MENU_LIST)
-    @Operation(summary = "获取菜���列表", description = "分页获取菜单列表，支持按菜单名称和状态筛选")
+    @Operation(summary = "获取菜单列表", description = "分页获取菜单列表，支持按菜单名称和状态筛选")
+    @OperateLog(module = "菜单管理", description = "查询菜单列表", recordResult = false)
     public Result<IPage<MenuVO>> list(@RequestBody MenuQueryDTO queryDTO) {
         return Result.success(sysMenuService.getMenuPage(queryDTO));
     }
@@ -45,6 +48,7 @@ public class SysMenuController {
     @GetMapping("/tree")
     @SaCheckPermission(PermissionConstants.MENU_LIST)
     @Operation(summary = "获取菜单树", description = "获取菜单树形结构")
+    @OperateLog(module = "菜单管理", description = "查询菜单树", recordResult = false)
     public Result<List<MenuVO>> getMenuTree() {
         return Result.success(sysMenuService.getMenuTree());
     }
@@ -55,6 +59,7 @@ public class SysMenuController {
     @GetMapping("/{id}")
     @SaCheckPermission(PermissionConstants.MENU_LIST)
     @Operation(summary = "获取菜单详情", description = "根据ID获取菜单详情")
+    @OperateLog(module = "菜单管理", description = "查询菜单详情", recordResult = false)
     public Result<MenuVO> getById(@Parameter(description = "菜单ID") @PathVariable Long id) {
         return Result.success(sysMenuService.getMenuById(id));
     }
@@ -65,6 +70,8 @@ public class SysMenuController {
     @PostMapping
     @SaCheckPermission(PermissionConstants.MENU_CREATE)
     @Operation(summary = "新增菜单", description = "创建新菜单")
+    @RepeatSubmit
+    @OperateLog(module = "菜单管理", description = "新增菜单")
     public Result<MenuVO> save(@Valid @RequestBody MenuCreateDTO dto) {
         return Result.success(sysMenuService.createMenu(dto));
     }
@@ -75,6 +82,8 @@ public class SysMenuController {
     @PutMapping("/{id}")
     @SaCheckPermission(PermissionConstants.MENU_UPDATE)
     @Operation(summary = "修改菜单", description = "更新菜单信息")
+    @RepeatSubmit
+    @OperateLog(module = "菜单管理", description = "修改菜单")
     public Result<MenuVO> update(
             @Parameter(description = "菜单ID") @PathVariable Long id,
             @Valid @RequestBody MenuUpdateDTO dto) {
@@ -87,6 +96,8 @@ public class SysMenuController {
     @DeleteMapping("/{id}")
     @SaCheckPermission(PermissionConstants.MENU_DELETE)
     @Operation(summary = "删除菜单", description = "根据ID删除菜单")
+    @RepeatSubmit
+    @OperateLog(module = "菜单管理", description = "删除菜单")
     public Result<Void> delete(@Parameter(description = "菜单ID") @PathVariable Long id) {
         sysMenuService.deleteMenu(id);
         return Result.success();

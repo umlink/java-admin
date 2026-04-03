@@ -36,3 +36,6 @@ build/
 .env
 application-local.yaml
 
+### Logs ###
+logs/
+

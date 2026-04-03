@@ -76,6 +76,24 @@ public class RedisUtil {
     }
 
     /**
+     * 原子设置（SETNX），仅当 key 不存在时设置
+     *
+     * @param key     Redis Key
+     * @param value   值
+     * @param seconds 过期时间（秒）
+     * @return 是否设置成功
+     */
+    public boolean setIfAbsent(String key, Object value, long seconds) {
+        Boolean result;
+        if (seconds > 0) {
+            result = redisTemplate.opsForValue().setIfAbsent(key, value, seconds, TimeUnit.SECONDS);
+        } else {
+            result = redisTemplate.opsForValue().setIfAbsent(key, value);
+        }
+        return Boolean.TRUE.equals(result);
+    }
+
+    /**
      * 原子递增
      *
      * @param delta 步长，必须大于 0

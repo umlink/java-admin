@@ -10,6 +10,9 @@ public final class PermissionConstants {
     /** 超管角色编码，拥有所有权限，与 StpInterfaceImpl.SUPER_ADMIN_ROLE 保持一致 */
     public static final String SUPER_ADMIN_ROLE = "ADMIN";
 
+    /** 通配符权限码，表示拥有所有权限 */
+    public static final String ALL_PERMISSIONS = "*";
+
     // 用户管理
     public static final String USER_LIST   = "sys:user:list";
     public static final String USER_CREATE = "sys:user:create";
@@ -29,4 +32,14 @@ public final class PermissionConstants {
     public static final String MENU_CREATE = "sys:menu:create";
     public static final String MENU_UPDATE = "sys:menu:update";
     public static final String MENU_DELETE = "sys:menu:delete";
+
+    // 操作日志管理
+    public static final String OPERATE_LOG_LIST = "sys:operate-log:list";
+    public static final String OPERATE_LOG_DETAIL = "sys:operate-log:detail";
+
+    // 订单管理
+    public static final String ORDER_CREATE = "order:create";
+    public static final String ORDER_LIST = "order:list";
+    public static final String ORDER_DETAIL = "order:detail";
+    public static final String ORDER_CANCEL = "order:cancel";
 }

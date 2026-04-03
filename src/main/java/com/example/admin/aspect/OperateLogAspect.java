@@ -2,6 +2,7 @@ package com.example.admin.aspect;
 
 import cn.dev33.satoken.stp.StpUtil;
 import com.example.admin.annotation.OperateLog;
+import com.example.admin.common.constant.EntityConstants;
 import com.example.admin.entity.SysOperateLog;
 import com.example.admin.service.SysOperateLogService;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -23,11 +24,14 @@ import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.Arrays;
+import java.util.List;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 /**
  * 操作日志切面
  * 使用 @Around 环绕通知记录请求参数、响应结果、执行时长
+ * 支持敏感字段脱敏
  */
 @Slf4j
 @Aspect
@@ -36,7 +40,6 @@ import java.util.stream.Collectors;
 public class OperateLogAspect {
 
     private static final String TRACE_ID_KEY = "traceId";
-    private static final int MAX_LENGTH = 4000;
 
     private final ObjectMapper objectMapper;
     private final SysOperateLogService sysOperateLogService;
@@ -98,14 +101,19 @@ public class OperateLogAspect {
         sysOperateLog.setIpAddress(getIpAddress(request));
         sysOperateLog.setUserAgent(request.getHeader("User-Agent"));
 
+        // 获取敏感字段列表
+        List<String> sensitiveFields = Arrays.asList(operateLog.sensitiveFields());
+
         // 请求参数
         if (operateLog.recordParams()) {
-            sysOperateLog.setRequestParams(getRequestParams(request, joinPoint));
+            String params = getRequestParams(request, joinPoint, sensitiveFields);
+            sysOperateLog.setRequestParams(truncate(params));
         }
 
         // 响应结果
         if (operateLog.recordResult() && result != null) {
-            sysOperateLog.setResponseResult(truncate(toJson(result)));
+            String resultJson = toJson(result);
+            sysOperateLog.setResponseResult(truncate(maskSensitiveFields(resultJson, sensitiveFields)));
         }
 
         // 执行时长
@@ -125,15 +133,15 @@ public class OperateLogAspect {
     }
 
     /**
-     * 获取请求参数
+     * 获取请求参数（含脱敏处理）
      */
-    private String getRequestParams(HttpServletRequest request, ProceedingJoinPoint joinPoint) {
+    private String getRequestParams(HttpServletRequest request, ProceedingJoinPoint joinPoint, List<String> sensitiveFields) {
         StringBuilder sb = new StringBuilder();
 
         // GET 参数
         String queryString = request.getQueryString();
         if (queryString != null) {
-            sb.append(queryString);
+            sb.append(maskSensitiveFields(queryString, sensitiveFields));
         }
 
         // POST JSON 参数
@@ -143,7 +151,8 @@ public class OperateLogAspect {
                 if (!sb.isEmpty()) {
                     sb.append("&");
                 }
-                sb.append(new String(content, StandardCharsets.UTF_8));
+                String json = new String(content, StandardCharsets.UTF_8);
+                sb.append(maskSensitiveFields(json, sensitiveFields));
             }
         }
 
@@ -155,11 +164,31 @@ public class OperateLogAspect {
                         .filter(arg -> !(arg instanceof HttpServletRequest))
                         .map(this::toJson)
                         .collect(Collectors.joining(","));
-                sb.append(params);
+                sb.append(maskSensitiveFields(params, sensitiveFields));
             }
         }
 
-        return truncate(sb.toString());
+        return sb.toString();
+    }
+
+    /**
+     * 敏感字段脱敏
+     * 将 password, token, secret, key 等字段的值替换为 ***
+     */
+    private String maskSensitiveFields(String json, List<String> sensitiveFields) {
+        if (json == null || json.isEmpty()) {
+            return json;
+        }
+        String result = json;
+        for (String field : sensitiveFields) {
+            // 匹配 "field":"value" 或 "field": "value" 格式
+            String regex = "(?i)\"" + Pattern.quote(field) + "\"\\s*:\\s*\"[^\"]*\"";
+            result = result.replaceAll(regex, "\"" + field + "\":\"***\"");
+            // 匹配 "field":123 数字格式（简单处理，不完整脱敏）
+            String regexNum = "(?i)\"" + Pattern.quote(field) + "\"\\s*:\\s*\\d+";
+            result = result.replaceAll(regexNum, "\"" + field + "\":\"***\"");
+        }
+        return result;
     }
 
     /**
@@ -208,10 +237,10 @@ public class OperateLogAspect {
      * 截断超长字符串
      */
     private String truncate(String str) {
-        if (str == null || str.length() <= MAX_LENGTH) {
+        if (str == null || str.length() <= EntityConstants.OPERATE_LOG_MAX_LENGTH) {
             return str;
         }
-        return str.substring(0, MAX_LENGTH);
+        return str.substring(0, EntityConstants.OPERATE_LOG_MAX_LENGTH);
     }
 
 }

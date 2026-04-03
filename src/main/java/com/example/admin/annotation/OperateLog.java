@@ -33,4 +33,10 @@ public @interface OperateLog {
      */
     boolean recordResult() default true;
 
+    /**
+     * 敏感字段列表，记录时会脱敏（替换为 ***）
+     * 默认: password, token, secret, key
+     */
+    String[] sensitiveFields() default {"password", "token", "secret", "key"};
+
 }

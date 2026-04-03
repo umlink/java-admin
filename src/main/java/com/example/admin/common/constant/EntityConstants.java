@@ -30,4 +30,7 @@ public final class EntityConstants {
 
     /** 库存扣减重试间隔（毫秒） */
     public static final long DEDUCT_RETRY_INTERVAL_MS = 10;
+
+    /** 操作日志最大长度 */
+    public static final int OPERATE_LOG_MAX_LENGTH = 4000;
 }

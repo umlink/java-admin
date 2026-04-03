@@ -26,7 +26,7 @@ public interface ProductStockService extends IService<ProductStock> {
     boolean deductStock(Long productId, Integer quantity);
 
     /**
-     * 释放库存（取消订单时调用）
+     * 释放库存（取消订单时调用，带乐观锁重试）
      *
      * @param productId 商品ID
      * @param quantity  释放数量

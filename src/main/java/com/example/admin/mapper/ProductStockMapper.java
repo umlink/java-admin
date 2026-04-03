@@ -33,18 +33,22 @@ public interface ProductStockMapper extends BaseMapper<ProductStock> {
                     @Param("version") Integer version);
 
     /**
-     * 释放库存（取消订单时调用）
+     * 释放库存（取消订单时调用，带乐观锁）
      *
      * @param productId 商品ID
      * @param quantity  释放数量
+     * @param version   当前版本号
      * @return 影响行数
      */
     @Update("UPDATE product_stock " +
             "SET available_stock = available_stock + #{quantity}, " +
-            "    locked_stock = locked_stock - #{quantity} " +
+            "    locked_stock = locked_stock - #{quantity}, " +
+            "    version = version + 1 " +
             "WHERE product_id = #{productId} " +
-            "  AND locked_stock >= #{quantity}")
+            "  AND locked_stock >= #{quantity} " +
+            "  AND version = #{version}")
     int releaseStock(@Param("productId") Long productId,
-                     @Param("quantity") Integer quantity);
+                     @Param("quantity") Integer quantity,
+                     @Param("version") Integer version);
 
 }

@@ -54,8 +54,8 @@
 - 分页接口：查询参数 > 1 个用 POST + QueryDTO，仅分页参数可用 GET
 - 每次执行变更任务后列出变更项条目
 
-# 进度更新规范（plan-doc/process.md）
+# 进度更新规范（plans/process.md）
 
 - 记录：大计划进度 + 当前进行中计划的未完成项 + 遗留问题
 - 已完成内容自动清理，不重复记录
-- 新对话首句：「读取 plan-doc/process.md，继续 Play-XX」
+- 新对话首句：「读取 plans/process.md，继续 Play-XX」

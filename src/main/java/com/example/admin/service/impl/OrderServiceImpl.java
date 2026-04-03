@@ -102,6 +102,11 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
                         OrderItemDTO rollbackItem = mergedItems.get(j);
                         productStockService.releaseStock(rollbackItem.getProductId(), rollbackItem.getQuantity());
                     }
+                    // 清理幂等键，允许用户重试
+                    Object cached = redisUtil.get(idempotentKey);
+                    if (IDEMPOTENT_PROCESSING.equals(cached)) {
+                        redisUtil.del(idempotentKey);
+                    }
                     throw new BusinessException("库存扣减失败，请稍后重试");
                 }
             }
@@ -160,7 +165,8 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
             return result;
         } catch (Exception e) {
             // 异常时清除 PROCESSING 标记，允许重试
-            if (Boolean.TRUE.equals(redisUtil.get(idempotentKey).equals(IDEMPOTENT_PROCESSING))) {
+            Object cached = redisUtil.get(idempotentKey);
+            if (IDEMPOTENT_PROCESSING.equals(cached)) {
                 redisUtil.del(idempotentKey);
             }
             throw e;

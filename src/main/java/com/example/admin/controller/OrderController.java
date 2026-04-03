@@ -36,7 +36,6 @@ public class OrderController {
     @PostMapping("/create")
     @SaCheckLogin
     @Operation(summary = "创建订单", description = "创建新订单")
-    @RepeatSubmit
     @OperateLog(module = "订单管理", description = "创建订单")
     public Result<CreateOrderVO> create(@Valid @RequestBody CreateOrderDTO dto) {
         return Result.success(orderService.create(dto));

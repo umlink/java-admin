@@ -1,11 +1,9 @@
 # 基础约束
 
-- 项目需求计划：`plan-doc/` 目录，`plan-tree.md` 为工作大纲，`play-{n}.md` 为各阶段计划
-- 编码前不能新增需求外的代码
+- 项目需求计划：`plans/` 目录，`plan-tree.md` 为工作大纲，`play-{n}.md` 为各阶段计划
 - 稍微复杂的逻辑需要自动添加注释
-- 代码逻辑需要考虑各种边界情况
 - SQL 文件：`src/main/resources/sql/`（参考用），迁移脚本：`src/main/resources/db/migration/`
-- 每完成一次任务更新 `plan-doc/process.md`
+- 每完成一次任务更新 `plans/process.md`
 - 开始编码工作前必须先列出工作记录，必须等我确认后才能继续
 - 每次完成一次任务后，review and check 最新完成的代码的质量是否有潜在问题和值得优化的地方
 

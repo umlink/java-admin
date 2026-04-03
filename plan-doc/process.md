@@ -3,24 +3,44 @@
 ## 大计划进度
 - Play-01 权限后台基础：✅ 完成
 - Play-02 登录鉴权与 Redis：✅ 完成
-- Play-03 权限分配与缓存设计：⏳ 待启动
+- Play-03 权限分配与缓存设计：✅ 完成
+- Play-04 日志与异常：✅ 完成
+- Play-05 订单系统核心流程：✅ 完成
+  - 第 11 天：创建订单核心流程 ✅
+  - 第 12 天：订单查询与取消 ✅
+  - 第 13 天：Redis 缓存与幂等 ✅
+- Play-XX 前端同步：⏳ 待执行
 
-## 技术决策备忘
-- ID 生成：AUTO_INCREMENT
-- 权限缓存：Redis TTL 5min + 主动失效（角色/菜单变更时清除）
-- 超管：role_code=ADMIN → getPermissionList 返回 ["*"]，跳过所有 @SaCheckPermission
-- 分页：统一 pageNum/pageSize，查询参数 > 1 个用 POST + QueryDTO
-- 数据库迁移：Flyway，V1__init_schema.sql + V2__init_data.sql
-- 审计字段：createdAt/updatedAt 由 MySQL 自动维护，createdBy/updatedBy 由 AuditMetaObjectHandler 填充
+## Play-05 已完成功能清单
 
-## Redis Key 规范
-- `perm:user:{userId}`：用户权限码列表，TTL 5min
-- `role:user:{userId}`：用户角色码列表，TTL 5min
-- `login:fail:{username}`：登录失败次数，TTL 30min
-- `login:lock:{username}`：登录锁定标记，TTL 30min
+### 1. 创建订单核心流程
+- `OrderStatusEnum` 订单状态枚举（待支付/已支付/已发货/已完成/已取消）
+- `CreateOrderDTO` / `OrderItemDTO` / `CreateOrderVO` 数据传输对象
+- `/order/create` 接口，支持多商品下单
+- 商品校验（存在性 + 上架状态）
+- 库存乐观锁扣减（`version` 字段）
+- 库存扣减失败自动回滚机制
+- 订单号生成（`yyyyMMddHHmmss` + 6位随机数）
+- `@Transactional` 事务控制
+
+### 2. 订单查询与取消
+- `/order/page` 分页查询订单（仅查自己的订单）
+- `/order/{id}` 查询订单详情（含明细）
+- `/order/cancel` 取消订单（仅待支付状态可取消）
+- 取消订单时自动释放库存
+- 订单状态流转校验
+
+### 3. Redis 缓存与幂等
+- **商品缓存**：`product:info:{productId}`，TTL 5min
+- **幂等设计**：`order:idempotent:{idempotentKey}`，TTL 1h
+  - 前端生成 UUID 作为幂等键
+  - 重复请求直接返回上次结果
+- **库存乐观锁**：SQL 层校验 `available_stock >= quantity AND version = #{version}`
 
 ## 遗留事项
 - JWT 密钥硬编码在 application.yaml，生产前需改为环境变量
 
-## 下一步
-读取 plan-doc/play-3.md，启动 Play-03
+## 下一步选项
+1. 执行前端同步（`sync-client`）
+2. 继续 Play-06
+3. 其他需求
